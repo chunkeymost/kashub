@@ -67,7 +67,7 @@
   }
   .brand{display:flex; align-items:center; gap:9px; font-family:'Space Grotesk',sans-serif; font-weight:700; font-size:17px;}
   .brand .dot{width:9px; height:9px; border-radius:50%; background:var(--accent);}
-  nav{display:flex; gap:6px; align-items:center;}
+  nav{display:flex; gap:6px; align-items:center; margin-left:auto;}
   nav a{
     font-size:13.5px; font-weight:600; color:var(--ink-soft); text-decoration:none;
     padding:7px 13px; border-radius:7px; transition:background .15s, color .15s;
@@ -81,6 +81,13 @@
   }
   .theme-toggle:hover{background:var(--accent-soft);}
   [data-theme="dark"] .theme-toggle{color:#fff;}
+  .nav-filters{display:flex; gap:6px; align-items:center;}
+  .nav-filters select{
+    padding:5px 8px; border:1px solid var(--border); border-radius:7px;
+    background:var(--surface); font-size:12px; font-family:'Inter',sans-serif;
+    color:var(--ink); cursor:pointer; outline:none;
+  }
+  .nav-filters select:focus{border-color:var(--accent);}
   .user-info{display:flex; align-items:center; gap:8px; font-size:12px; color:var(--ink-soft);}
   .user-email{font-family:'JetBrains Mono',monospace; font-size:11px; max-width:140px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;}
   .logout-btn{
@@ -114,14 +121,15 @@
   .card.saving .value{color:var(--amber);}
 
   .bars{display:flex; flex-direction:column; gap:10px; margin-top:26px;}
-  .bar-row{display:grid; grid-template-columns:96px 1fr 100px; align-items:center; gap:12px; font-size:12.5px;}
-  .bar-row .lbl{color:var(--ink-soft); font-weight:600;}
-  .bar-track{background:var(--accent-soft); border-radius:5px; height:9px; overflow:hidden;}
+  .bar-row{display:grid; grid-template-columns:1fr auto; grid-template-rows:auto auto; gap:6px 0; font-size:12.5px;}
+  .bar-row .lbl{grid-column:1; grid-row:1; color:var(--ink-soft); font-weight:600;}
+  .bar-row .amt{grid-column:2; grid-row:1; font-family:'JetBrains Mono',monospace; text-align:right; font-size:12px; color:var(--ink-soft);}
+  .bar-track{grid-column:1 / -1; grid-row:2; background:var(--accent-soft); border-radius:5px; height:9px; overflow:hidden; width:100%;}
   .bar-fill{height:100%; border-radius:5px;}
   .bar-fill.income{background:var(--accent);}
   .bar-fill.expense{background:var(--red);}
   .bar-fill.saving{background:var(--amber);}
-  .bar-row .amt{font-family:'JetBrains Mono',monospace; text-align:right; font-size:12px; color:var(--ink-soft);}
+  
 
   table.ledger{width:100%; border-collapse:collapse; font-size:13.5px;}
   .ledger th{text-align:left; font-size:11px; font-weight:600; text-transform:uppercase; letter-spacing:0.04em; color:var(--ink-faint); padding:0 10px 8px; border-bottom:1px solid var(--border);}
@@ -202,8 +210,11 @@
   .reset-link{font-size:12px; color:var(--ink-faint); background:none; border:none; cursor:pointer; text-decoration:underline;}
 
   @media (max-width:720px){
-    .nav-wrap{flex-direction:column; align-items:flex-start; gap:10px;}
-    nav{width:100%; overflow-x:auto;}
+    .nav-wrap{display:grid; grid-template-columns:auto 1fr; gap:10px; align-items:center;}
+    nav{overflow-x:auto; justify-content:flex-start;}
+    .nav-filters{grid-column:1/-1; display:flex; gap:6px;}
+    .nav-filters select{flex:1;}
+    .user-info{grid-column:1/-1; display:flex; align-items:center; justify-content:flex-end; gap:8px;}
     .cards{grid-template-columns:repeat(2,1fr);}
     form.entry-form{grid-template-columns:1fr 1fr;}
     .hero{padding:36px 0 24px;}
@@ -224,7 +235,7 @@
     }
     .ledger td.amt-col{justify-content:flex-end;}
     .ledger td.action-col{justify-content:flex-end; border-bottom:none;}
-    .bar-row{grid-template-columns:70px 1fr 80px; gap:8px;}
+    .bar-row{grid-template-columns:1fr auto;}
     .plan-card{padding:16px;}
     .plan-meta{flex-direction:column; gap:4px;}
     .contrib-form div{min-width:100%;}
@@ -235,7 +246,7 @@
     form.entry-form{grid-template-columns:1fr;}
     .hero h1{font-size:24px;}
     main{padding:0 16px;}
-    .bar-row{grid-template-columns:60px 1fr 70px;}
+    .bar-row{grid-template-columns:1fr auto;}
   }
 
   @media (prefers-reduced-motion: reduce){ *{transition:none !important;} }
@@ -326,6 +337,10 @@
       <a href="#transaksi">Transaksi</a>
       <a href="#rencana">Rencana Aset</a>
     </nav>
+    <div class="nav-filters">
+      <select id="filterMonth"></select>
+      <select id="filterYear"></select>
+    </div>
     <div class="user-info">
       <span class="user-email" id="userEmail"></span>
       <button class="logout-btn" id="logoutBtn">Keluar</button>
@@ -515,6 +530,30 @@
   let editingPlanId = null;
   let currentUser = null;
   let isLoginMode = true;
+  const now = new Date();
+  let filterMonth = now.getMonth() + 1;
+  let filterYear = now.getFullYear();
+  const monthNames = ['Januari','Februari','Maret','April','Mei','Juni','Juli','Agustus','September','Oktober','November','Desember'];
+
+  function populateFilterDropdowns(){
+    const monthEl = document.getElementById('filterMonth');
+    const yearEl = document.getElementById('filterYear');
+    if(!monthEl || !yearEl) return;
+    monthEl.innerHTML = monthNames.map((m,i)=>`<option value="${i+1}"${(i+1)===filterMonth?' selected':''}>${m}</option>`).join('');
+    const years = new Set();
+    years.add(now.getFullYear());
+    transactions.forEach(t=>{ if(t.date) years.add(Number(t.date.slice(0,4))); });
+    const sortedYears = [...years].sort((a,b)=>b-a);
+    yearEl.innerHTML = sortedYears.map(y=>`<option value="${y}"${y===filterYear?' selected':''}>${y}</option>`).join('');
+    monthEl.addEventListener('change', ()=>{
+      filterMonth = Number(monthEl.value);
+      renderDashboard();
+    });
+    yearEl.addEventListener('change', ()=>{
+      filterYear = Number(yearEl.value);
+      renderDashboard();
+    });
+  }
 
   function escapeHtml(s){
     return (s||'').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
@@ -714,9 +753,10 @@
 
   // ========== DASHBOARD ==========
 
-  function totals(){
+  function totals(filtered){
     let income=0, expense=0, saving=0;
-    transactions.forEach(t=>{
+    const list = filtered || transactions;
+    list.forEach(t=>{
       if(t.type==='income') income += t.amount;
       else if(t.type==='expense') expense += t.amount;
       else if(t.type==='saving') saving += t.amount;
@@ -724,22 +764,24 @@
     return {income, expense, saving, balance: income - expense - saving};
   }
 
+  function getFilteredTransactions(){
+    const ym = filterYear+'-'+String(filterMonth).padStart(2,'0');
+    return transactions.filter(t=> t.date && t.date.startsWith(ym));
+  }
+
   function renderDashboard(){
-    const {income, expense, saving, balance} = totals();
+    const filtered = getFilteredTransactions();
+    const {income, expense, saving, balance} = totals(filtered);
     document.getElementById('cardBalance').textContent = fmtNum(balance);
     document.getElementById('cardIncome').textContent = fmtNum(income);
     document.getElementById('cardExpense').textContent = fmtNum(expense);
     document.getElementById('cardSaving').textContent = fmtNum(saving);
 
-    const now = new Date();
-    const ym = now.getFullYear()+'-'+String(now.getMonth()+1).padStart(2,'0');
     let mi=0, me=0, ms=0;
-    transactions.forEach(t=>{
-      if(t.date && t.date.startsWith(ym)){
-        if(t.type==='income') mi+=t.amount;
-        else if(t.type==='expense') me+=t.amount;
-        else if(t.type==='saving') ms+=t.amount;
-      }
+    filtered.forEach(t=>{
+      if(t.type==='income') mi+=t.amount;
+      else if(t.type==='expense') me+=t.amount;
+      else if(t.type==='saving') ms+=t.amount;
     });
     const max = Math.max(mi, me, ms, 1);
     document.getElementById('monthBars').innerHTML = `
@@ -748,10 +790,10 @@
       <div class="bar-row"><span class="lbl">Tabungan</span><div class="bar-track"><div class="bar-fill saving" style="width:${(ms/max*100)}%"></div></div><span class="amt">${fmtNum(ms)}</span></div>
     `;
 
-    const recent = [...transactions].sort((a,b)=> b.date.localeCompare(a.date) || b.id - a.id).slice(0,6);
+    const recent = [...filtered].sort((a,b)=> b.date.localeCompare(a.date) || b.id - a.id).slice(0,6);
     const body = document.getElementById('recentBody');
     body.innerHTML = recent.length===0
-      ? `<tr><td colspan="4" class="empty">Belum ada transaksi. Tambahkan di bagian Transaksi.</td></tr>`
+      ? `<tr><td colspan="4" class="empty">Belum ada transaksi untuk periode ini.</td></tr>`
       : recent.map(rowHtml(false)).join('');
   }
 
@@ -1298,6 +1340,7 @@
   });
 
   function renderAll(){
+    populateFilterDropdowns();
     renderDashboard();
     renderTransaksi();
     renderRencana();
