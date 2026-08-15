@@ -433,6 +433,7 @@
   let currentFilter = 'all';
   let editingId = null;
   let editingPlanId = null;
+  let evidenceRemoved = false;
   const _now = new Date();
   let filterMonth = _now.getMonth() + 1;
   let filterYear = _now.getFullYear();
@@ -771,8 +772,18 @@
         document.getElementById('txAmount').value = tx.amount;
         document.getElementById('txNote').value = tx.note || '';
         const prev = document.getElementById('txEvidencePreview');
-        prev.innerHTML = tx.evidence ? `<img src="${tx.evidence}">` : '';
+        if(tx.evidence){
+          prev.innerHTML = `<img src="${tx.evidence}"><button type="button" class="btn small outline" id="txRemoveEvidence" style="margin-left:8px; font-size:11px; padding:4px 10px; color:var(--red);">✕ Hapus</button>`;
+          document.getElementById('txRemoveEvidence').addEventListener('click', ()=>{
+            prev.innerHTML = '';
+            document.getElementById('txEvidence').value = '';
+            evidenceRemoved = true;
+          });
+        } else {
+          prev.innerHTML = '';
+        }
         document.getElementById('txEvidence').value = '';
+        evidenceRemoved = false;
         document.getElementById('txSubmitBtn').style.display = 'none';
         document.getElementById('txUpdateBtn').style.display = '';
         document.getElementById('txCancelBtn').style.display = '';
@@ -788,6 +799,7 @@
 
   function resetFormMode(){
     editingId = null;
+    evidenceRemoved = false;
     document.getElementById('txForm').reset();
     document.getElementById('txDate').value = todayISO();
     document.getElementById('txEvidencePreview').innerHTML = '';
@@ -806,7 +818,7 @@
     let evidence = null;
     if(editingId){
       const existing = transactions.find(t=>t.id===editingId);
-      evidence = existing ? existing.evidence || null : null;
+      evidence = evidenceRemoved ? null : (existing ? existing.evidence || null : null);
       if(fileInput && fileInput.files && fileInput.files[0]){
         const file = fileInput.files[0];
         if(file.size > 5*1024*1024){ alert('Ukuran gambar maks 5MB.'); return; }
