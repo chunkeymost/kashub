@@ -32,6 +32,8 @@ npm start
 
 Server akan berjalan di **http://localhost:3000**
 
+> **Note:** Body limit diatur ke 10mb untuk mendukung upload gambar base64 sebagai bukti setoran.
+
 ## Database Setup
 
 | Parameter | Value |
@@ -54,6 +56,7 @@ Server akan berjalan di **http://localhost:3000**
 | amount | INT | Jumlah dalam Rupiah |
 | note | TEXT | Catatan tambahan (opsional) |
 | plan_id | BIGINT | ID rencana terkait (opsional) |
+| evidence | MEDIUMTEXT | Bukti gambar setoran dalam base64 (opsional) |
 | created_at | TIMESTAMP | Waktu data dibuat |
 
 **plans**
@@ -66,7 +69,17 @@ Server akan berjalan di **http://localhost:3000**
 | mode | ENUM | `date` (berdasarkan tanggal) atau `monthly` (cicilan tetap) |
 | target_date | DATE | Tanggal target tercapai (mode date) |
 | monthly_fixed | INT | Cicilan per bulan (mode monthly) |
+| purchase_link | VARCHAR(500) | Link pembelian aset (opsional) |
 | created_at | DATE | Tanggal rencana dibuat |
+
+### Migrasi Database
+
+Jika database sudah ada sebelumnya, jalankan perintah berikut untuk menambah kolom baru:
+
+```sql
+ALTER TABLE plans ADD COLUMN purchase_link VARCHAR(500) DEFAULT NULL;
+ALTER TABLE transactions ADD COLUMN evidence MEDIUMTEXT DEFAULT NULL;
+```
 
 ## API Documentation
 
@@ -76,6 +89,7 @@ Server akan berjalan di **http://localhost:3000**
 |--------|----------|--------|
 | GET | `/api/transactions` | Ambil semua transaksi |
 | POST | `/api/transactions` | Tambah transaksi baru |
+| PUT | `/api/transactions/:id` | Update transaksi |
 | DELETE | `/api/transactions/:id` | Hapus transaksi |
 
 **POST /api/transactions — Request Body:**
@@ -88,7 +102,21 @@ Server akan berjalan di **http://localhost:3000**
   "category": "Gaji",
   "amount": 5000000,
   "note": "Gaji bulanan",
-  "planId": null
+  "planId": null,
+  "evidence": null
+}
+```
+
+**PUT /api/transactions/:id — Request Body:**
+
+```json
+{
+  "date": "2026-08-15",
+  "type": "income",
+  "category": "Gaji",
+  "amount": 5500000,
+  "note": "Gaji bulanan + bonus",
+  "evidence": "data:image/jpeg;base64,..."
 }
 ```
 
@@ -98,6 +126,7 @@ Server akan berjalan di **http://localhost:3000**
 |--------|----------|--------|
 | GET | `/api/plans` | Ambil semua rencana |
 | POST | `/api/plans` | Tambah rencana baru |
+| PUT | `/api/plans/:id` | Update rencana |
 | DELETE | `/api/plans/:id` | Hapus rencana |
 | POST | `/api/plans/:id/contrib` | Tambah setoran ke rencana |
 
@@ -111,7 +140,21 @@ Server akan berjalan di **http://localhost:3000**
   "mode": "monthly",
   "targetDate": "",
   "monthlyFixed": 2000000,
+  "purchaseLink": "https://www.tokopedia.com/motor/beat",
   "createdAt": "2026-08-15"
+}
+```
+
+**PUT /api/plans/:id — Request Body:**
+
+```json
+{
+  "name": "Motor Honda Beat",
+  "targetAmount": 25000000,
+  "mode": "monthly",
+  "targetDate": "",
+  "monthlyFixed": 2500000,
+  "purchaseLink": "https://www.tokopedia.com/motor/beat"
 }
 ```
 
@@ -122,7 +165,8 @@ Server akan berjalan di **http://localhost:3000**
   "id": 1723728002000,
   "date": "2026-08-15",
   "amount": 500000,
-  "planName": "Motor"
+  "planName": "Motor",
+  "evidence": "data:image/jpeg;base64,..."
 }
 ```
 
@@ -157,5 +201,20 @@ kasku/
 Buka **http://localhost:3000** di browser, lalu:
 
 1. **Dasbor** — Lihat ringkasan saldo, pemasukan, pengeluaran, dan transaksi terakhir
-2. **Transaksi** — Tambah, filter, dan hapus catatan pemasukan/pengeluaran
-3. **Rencana Aset** — Buat rencana cicilan aset dan catat setoran berkala
+2. **Transaksi** — Tambah, edit, filter, dan hapus catatan pemasukan/pengeluaran
+   - Klik tombol **✎** pada baris transaksi untuk mengedit
+   - Klik tombol **✕** untuk menghapus transaksi
+3. **Rencana Aset** — Buat rencana cicilan aset, catat setoran berkala, dan unggah bukti
+   - Klik **✎ Edit** pada rencana untuk mengubah nama, target, cicilan, atau link pembelian
+   - Klik **Lihat Setoran** untuk melihat daftar semua setoran per rencana
+   - Klik **+ Tambah Setoran** lalu unggah gambar bukti sebagai evidence
+   - Klik thumbnail gambar untuk melihat bukti dalam ukuran penuh (lightbox)
+   - Klik **✕** pada thumbnail untuk menghapus bukti gambar
+   - Link pembelian ditampilkan sebagai "🔗 Lihat Produk" jika sudah diisi
+
+### Fitur Responsive
+
+Tampilan otomatis menyesuaikan di perangkat mobile (< 720px):
+- Tabel transaksi berubah menjadi card layout
+- Form input menyesuaikan lebar layar
+- Navigasi stack vertikal dengan scroll horizontal
