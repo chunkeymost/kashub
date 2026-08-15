@@ -23,7 +23,7 @@
     --radius:10px;
   }
   *{box-sizing:border-box;}
-  html{scroll-behavior:smooth;}
+  html{scroll-behavior:auto;}
   body{
     margin:0; background:var(--bg); color:var(--ink);
     font-family:'Inter',sans-serif; line-height:1.5;
@@ -56,6 +56,8 @@
   .hero h1{font-size:32px; letter-spacing:-0.01em;}
   .hero p{color:var(--ink-soft); font-size:14.5px; margin-top:8px; max-width:520px;}
 
+  .page{display:none; padding:48px 0; scroll-margin-top:70px;}
+  .page.active{display:block;}
   section.block{padding:48px 0; border-bottom:1px solid var(--border); scroll-margin-top:70px;}
   section.block:last-of-type{border-bottom:none;}
   .block-head{display:flex; align-items:baseline; justify-content:space-between; margin-bottom:22px; flex-wrap:wrap; gap:8px;}
@@ -158,12 +160,12 @@
 
 <main>
 
-  <div class="hero">
-    <h1>Kelola keuangan, capai target asetmu.</h1>
-    <p>Catat pemasukan dan pengeluaran harian, lalu rencanakan cicilan untuk aset yang ingin kamu miliki.</p>
-  </div>
+  <section class="block page active" id="dasbor">
+    <div class="hero">
+      <h1>Kelola keuangan, capai target asetmu.</h1>
+      <p>Catat pemasukan dan pengeluaran harian, lalu rencanakan cicilan untuk aset yang ingin kamu miliki.</p>
+    </div>
 
-  <section class="block" id="dasbor">
     <div class="block-head">
       <h2>Dasbor</h2>
       <span class="desc" id="todayStamp"></span>
@@ -182,9 +184,13 @@
       <thead><tr><th>Tanggal</th><th>Jenis</th><th>Kategori / Catatan</th><th style="text-align:right">Jumlah</th></tr></thead>
       <tbody id="recentBody"></tbody>
     </table>
+
+    <footer>
+      <button class="reset-link" id="resetBtn">Hapus semua data</button>
+    </footer>
   </section>
 
-  <section class="block" id="transaksi">
+  <section class="block page" id="transaksi">
     <div class="block-head">
       <h2>Transaksi</h2>
       <span class="desc">Tambahkan pemasukan dan pengeluaran</span>
@@ -236,7 +242,7 @@
     </table>
   </section>
 
-  <section class="block" id="rencana">
+  <section class="block page" id="rencana">
     <div class="block-head">
       <h2>Rencana Aset</h2>
       <span class="desc">Cicil sedikit demi sedikit hingga target tercapai</span>
@@ -273,10 +279,6 @@
     <div class="plan-grid" id="planGrid"></div>
   </section>
 
-  <footer>
-    <button class="reset-link" id="resetBtn">Hapus semua data</button>
-  </footer>
-
 </main>
 
 <script>
@@ -289,36 +291,49 @@
   let plans = [];
   let currentFilter = 'all';
 
+  const API = '';
+
   async function loadAll(){
     try{
-      const t = await window.storage.get('kas:transactions');
-      transactions = t ? JSON.parse(t.value) : [];
+      const t = await fetch(API+'/api/transactions').then(r=>r.json());
+      transactions = Array.isArray(t) ? t : [];
     }catch(e){ transactions = []; }
     try{
-      const p = await window.storage.get('kas:plans');
-      plans = p ? JSON.parse(p.value) : [];
+      const p = await fetch(API+'/api/plans').then(r=>r.json());
+      plans = Array.isArray(p) ? p : [];
     }catch(e){ plans = []; }
     renderAll();
   }
-  async function saveTransactions(){
-    try{ await window.storage.set('kas:transactions', JSON.stringify(transactions)); }
-    catch(e){ console.error('Gagal menyimpan transaksi', e); }
+  async function apiPost(url, data){
+    const res = await fetch(API+url, {
+      method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(data)
+    });
+    if(!res.ok) throw new Error('Server error');
+    return res.json();
   }
-  async function savePlans(){
-    try{ await window.storage.set('kas:plans', JSON.stringify(plans)); }
-    catch(e){ console.error('Gagal menyimpan rencana', e); }
+  async function apiDel(url){
+    const res = await fetch(API+url, {method:'DELETE'});
+    if(!res.ok) throw new Error('Server error');
+    return res.json();
   }
 
   const navLinks = document.querySelectorAll('nav a');
-  const sections = ['dasbor','transaksi','rencana'].map(id=>document.getElementById(id));
-  const observer = new IntersectionObserver((entries)=>{
-    entries.forEach(entry=>{
-      if(entry.isIntersecting){
-        navLinks.forEach(l=>l.classList.toggle('active', l.getAttribute('href') === '#'+entry.target.id));
-      }
-    });
-  }, {rootMargin:'-40% 0px -55% 0px'});
-  sections.forEach(s=>observer.observe(s));
+  const allPages = document.querySelectorAll('.page');
+  const validHashes = ['dasbor','transaksi','rencana'];
+
+  function navigateTo(hash){
+    const id = hash.replace('#','');
+    if(!validHashes.includes(id)){
+      location.hash = '#dasbor';
+      return;
+    }
+    allPages.forEach(p => p.classList.toggle('active', p.id === id));
+    navLinks.forEach(l => l.classList.toggle('active', l.getAttribute('href') === '#'+id));
+    window.scrollTo(0,0);
+  }
+
+  window.addEventListener('hashchange', ()=> navigateTo(location.hash));
+  if(!location.hash) location.hash = '#dasbor';
 
   document.getElementById('todayStamp').textContent = new Date().toLocaleDateString('id-ID', {day:'2-digit', month:'long', year:'numeric'});
   document.getElementById('txDate').value = todayISO();
@@ -408,9 +423,13 @@
       btn.addEventListener('click', async ()=>{
         const id = Number(btn.dataset.del);
         if(confirm('Hapus transaksi ini?')){
-          transactions = transactions.filter(t=>t.id!==id);
-          await saveTransactions();
-          renderAll();
+          try{
+            await apiDel('/api/transactions/'+id);
+            transactions = transactions.filter(t=>t.id!==id);
+            renderAll();
+          }catch(err){
+            alert('Gagal menghapus transaksi.');
+          }
         }
       });
     });
@@ -427,11 +446,16 @@
       note: document.getElementById('txNote').value.trim()
     };
     if(tx.amount <= 0) return;
-    transactions.push(tx);
-    await saveTransactions();
-    e.target.reset();
-    document.getElementById('txDate').value = todayISO();
-    renderAll();
+    try{
+      await apiPost('/api/transactions', tx);
+      transactions.push(tx);
+      e.target.reset();
+      document.getElementById('txDate').value = todayISO();
+      renderAll();
+      alert('Transaksi berhasil disimpan!');
+    }catch(err){
+      alert('Gagal menyimpan transaksi. Pastikan server berjalan.');
+    }
   });
 
   document.querySelectorAll('input[name="planMode"]').forEach(r=>{
@@ -457,12 +481,17 @@
     if(!plan.name || plan.targetAmount<=0) return;
     if(plan.mode==='date' && !plan.targetDate) return;
     if(plan.mode==='monthly' && plan.monthlyFixed<=0) return;
-    plans.push(plan);
-    await savePlans();
-    e.target.reset();
-    document.getElementById('planDateWrap').style.display='block';
-    document.getElementById('planMonthlyWrap').style.display='none';
-    renderAll();
+    try{
+      await apiPost('/api/plans', plan);
+      plans.push(plan);
+      e.target.reset();
+      document.getElementById('planDateWrap').style.display='block';
+      document.getElementById('planMonthlyWrap').style.display='none';
+      renderAll();
+      alert('Rencana aset berhasil dibuat!');
+    }catch(err){
+      alert('Gagal menyimpan rencana. Pastikan server berjalan.');
+    }
   });
 
   function monthsBetween(fromISO, toISO){
@@ -544,26 +573,41 @@
         const amount = Number(amtInput.value) || 0;
         if(amount<=0){ amtInput.focus(); return; }
         const plan = plans.find(p=>p.id===id);
-        transactions.push({
+        const contrib = {
           id: Date.now(),
           date: dateInput.value || todayISO(),
-          type: 'saving',
-          category: 'Tabungan: ' + plan.name,
           amount: amount,
-          note: '',
-          planId: id
-        });
-        await saveTransactions();
-        renderAll();
+          planName: plan.name
+        };
+        try{
+          await apiPost('/api/plans/'+id+'/contrib', contrib);
+          transactions.push({
+            id: contrib.id,
+            date: contrib.date,
+            type: 'saving',
+            category: 'Tabungan: ' + plan.name,
+            amount: amount,
+            note: '',
+            planId: id
+          });
+          renderAll();
+          alert('Setoran berhasil disimpan!');
+        }catch(err){
+          alert('Gagal menyimpan setoran. Pastikan server berjalan.');
+        }
       });
     });
     grid.querySelectorAll('[data-delplan]').forEach(btn=>{
       btn.addEventListener('click', async ()=>{
         const id = Number(btn.dataset.delplan);
         if(confirm('Hapus rencana ini? Setoran yang sudah tercatat akan tetap ada di riwayat transaksi.')){
-          plans = plans.filter(p=>p.id!==id);
-          await savePlans();
-          renderAll();
+          try{
+            await apiDel('/api/plans/'+id);
+            plans = plans.filter(p=>p.id!==id);
+            renderAll();
+          }catch(err){
+            alert('Gagal menghapus rencana.');
+          }
         }
       });
     });
@@ -571,11 +615,15 @@
 
   document.getElementById('resetBtn').addEventListener('click', async ()=>{
     if(confirm('Hapus SEMUA data transaksi dan rencana aset? Tindakan ini tidak bisa dibatalkan.')){
-      transactions = [];
-      plans = [];
-      await saveTransactions();
-      await savePlans();
-      renderAll();
+      try{
+        await apiDel('/api/reset');
+        transactions = [];
+        plans = [];
+        renderAll();
+        alert('Semua data berhasil dihapus.');
+      }catch(err){
+        alert('Gagal mereset data.');
+      }
     }
   });
 
