@@ -1,0 +1,1246 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Kas — Kelola Keuangan &amp; Rencana Aset</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+  :root{
+    --bg:#f6f5f2;
+    --surface:#ffffff;
+    --border:#e6e3dc;
+    --ink:#1c1c1a;
+    --ink-soft:#6b6a63;
+    --ink-faint:#a3a196;
+    --accent:#3a5a40;
+    --accent-soft:#e6ede4;
+    --red:#a3392c;
+    --red-soft:#f5e6e3;
+    --amber:#a4762f;
+    --amber-soft:#f3ead8;
+    --radius:10px;
+  }
+  [data-theme="dark"]{
+    --bg:#1a1a18;
+    --surface:#2a2a27;
+    --border:#3a3a36;
+    --ink:#e8e6e0;
+    --ink-soft:#a0a096;
+    --ink-faint:#a0a096;
+    --accent:#6aad6e;
+    --accent-soft:#2a3a2c;
+    --red:#d46a5e;
+    --red-soft:#3a2420;
+    --amber:#d4a65e;
+    --amber-soft:#3a3020;
+  }
+  [data-theme="dark"] .btn{background:var(--accent); color:#1a1a18;}
+  [data-theme="dark"] .chip.active{background:var(--accent); color:#1a1a18; border-color:var(--accent);}
+  [data-theme="dark"] .del-btn{color:var(--ink-soft);}
+  [data-theme="dark"] .edit-btn{color:var(--ink-soft);}
+  [data-theme="dark"] input[type="date"]::-webkit-calendar-picker-indicator{filter:invert(1);}
+  [data-theme="dark"] input[type="url"]::-webkit-calendar-picker-indicator{filter:invert(1);}
+  *{box-sizing:border-box;}
+  html{scroll-behavior:auto;}
+  body{
+    margin:0; background:var(--bg); color:var(--ink);
+    font-family:'Inter',sans-serif; line-height:1.5;
+  }
+  h1,h2,h3{font-family:'Space Grotesk',sans-serif; margin:0;}
+  .mono{font-family:'JetBrains Mono',monospace;}
+
+  header{
+    position:sticky; top:0; z-index:20;
+    background:rgba(246,245,242,0.92); backdrop-filter:blur(8px);
+    border-bottom:1px solid var(--border);
+  }
+  [data-theme="dark"] header{
+    background:rgba(26,26,24,0.92);
+  }
+  .nav-wrap{
+    max-width:920px; margin:0 auto; padding:16px 24px;
+    display:flex; align-items:center; justify-content:space-between; gap:16px;
+  }
+  .brand{display:flex; align-items:center; gap:9px; font-family:'Space Grotesk',sans-serif; font-weight:700; font-size:17px;}
+  .brand .dot{width:9px; height:9px; border-radius:50%; background:var(--accent);}
+  nav{display:flex; gap:6px; align-items:center;}
+  nav a{
+    font-size:13.5px; font-weight:600; color:var(--ink-soft); text-decoration:none;
+    padding:7px 13px; border-radius:7px; transition:background .15s, color .15s;
+  }
+  nav a:hover{background:var(--accent-soft); color:var(--accent);}
+  nav a.active{background:var(--accent); color:#fff;}
+  .theme-toggle{
+    background:var(--surface); border:1px solid var(--border);
+    border-radius:7px; padding:6px 10px; cursor:pointer;
+    font-size:16px; line-height:1; transition:background .15s;
+  }
+  .theme-toggle:hover{background:var(--accent-soft);}
+  [data-theme="dark"] .theme-toggle{color:#fff;}
+  .user-info{display:flex; align-items:center; gap:8px; font-size:12px; color:var(--ink-soft);}
+  .user-email{font-family:'JetBrains Mono',monospace; font-size:11px; max-width:140px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;}
+  .logout-btn{
+    background:none; border:1px solid var(--border); border-radius:7px;
+    padding:5px 10px; font-size:11px; font-weight:600; color:var(--ink-soft);
+    cursor:pointer; transition:all .15s;
+  }
+  .logout-btn:hover{background:var(--red-soft); color:var(--red); border-color:var(--red);}
+
+  main{max-width:920px; margin:0 auto; padding:0 24px;}
+
+  .hero{padding:52px 0 30px; border-bottom:1px solid var(--border);}
+  .hero h1{font-size:32px; letter-spacing:-0.01em;}
+  .hero p{color:var(--ink-soft); font-size:14.5px; margin-top:8px; max-width:520px;}
+
+  .page{display:none; padding:48px 0; scroll-margin-top:70px;}
+  .page.active{display:block;}
+  section.block{padding:48px 0; border-bottom:1px solid var(--border); scroll-margin-top:70px;}
+  section.block:last-of-type{border-bottom:none;}
+  .block-head{display:flex; align-items:baseline; justify-content:space-between; margin-bottom:22px; flex-wrap:wrap; gap:8px;}
+  .block-head h2{font-size:21px;}
+  .block-head .desc{color:var(--ink-soft); font-size:13px;}
+
+  .cards{display:grid; grid-template-columns:repeat(4,1fr); gap:12px; margin-bottom:8px;}
+  .card{background:var(--surface); border:1px solid var(--border); border-radius:var(--radius); padding:16px 16px 14px;}
+  .card .label{font-size:11px; font-weight:600; color:var(--ink-faint); text-transform:uppercase; letter-spacing:0.04em;}
+  .card .value{font-family:'JetBrains Mono',monospace; font-size:19px; font-weight:600; margin-top:8px;}
+  .card.balance .value{color:var(--ink);}
+  .card.income .value{color:var(--accent);}
+  .card.expense .value{color:var(--red);}
+  .card.saving .value{color:var(--amber);}
+
+  .bars{display:flex; flex-direction:column; gap:10px; margin-top:26px;}
+  .bar-row{display:grid; grid-template-columns:96px 1fr 100px; align-items:center; gap:12px; font-size:12.5px;}
+  .bar-row .lbl{color:var(--ink-soft); font-weight:600;}
+  .bar-track{background:var(--accent-soft); border-radius:5px; height:9px; overflow:hidden;}
+  .bar-fill{height:100%; border-radius:5px;}
+  .bar-fill.income{background:var(--accent);}
+  .bar-fill.expense{background:var(--red);}
+  .bar-fill.saving{background:var(--amber);}
+  .bar-row .amt{font-family:'JetBrains Mono',monospace; text-align:right; font-size:12px; color:var(--ink-soft);}
+
+  table.ledger{width:100%; border-collapse:collapse; font-size:13.5px;}
+  .ledger th{text-align:left; font-size:11px; font-weight:600; text-transform:uppercase; letter-spacing:0.04em; color:var(--ink-faint); padding:0 10px 8px; border-bottom:1px solid var(--border);}
+  .ledger td{padding:11px 10px; border-bottom:1px solid var(--border); vertical-align:top;}
+  .ledger tr:last-child td{border-bottom:none;}
+  .amt-col{font-family:'JetBrains Mono',monospace; text-align:right; white-space:nowrap;}
+  .type-tag{font-size:10.5px; font-weight:700; padding:3px 9px; border-radius:20px; text-transform:uppercase; letter-spacing:0.02em; display:inline-block;}
+  .type-tag.income{background:var(--accent-soft); color:var(--accent);}
+  .type-tag.expense{background:var(--red-soft); color:var(--red);}
+  .type-tag.saving{background:var(--amber-soft); color:var(--amber);}
+  .del-btn{background:none; border:none; color:var(--ink-faint); cursor:pointer; font-size:16px; line-height:1; padding:2px 6px;}
+  .del-btn:hover{color:var(--red);}
+  .edit-btn{background:none; border:none; color:var(--ink-faint); cursor:pointer; font-size:15px; line-height:1; padding:2px 6px;}
+  .edit-btn:hover{color:var(--accent);}
+  .plan-link{font-size:12.5px; margin-top:8px;}
+  .plan-link a{color:var(--accent); text-decoration:none;}
+  .plan-link a:hover{text-decoration:underline;}
+  .contrib-list{margin-top:14px; background:var(--bg); border:1px solid var(--border); border-radius:var(--radius); overflow:hidden;}
+  .contrib-list-head{padding:10px 14px; font-size:12px; font-weight:600; color:var(--ink-soft); border-bottom:1px solid var(--border); background:var(--surface);}
+  .contrib-item{display:flex; align-items:center; justify-content:space-between; padding:10px 14px; border-bottom:1px solid var(--border); font-size:13px; gap:10px;}
+  .contrib-item:last-child{border-bottom:none;}
+  .contrib-date{color:var(--ink-soft); white-space:nowrap;}
+  .contrib-amt{font-family:'JetBrains Mono',monospace; font-weight:600;}
+  .contrib-actions{display:flex; gap:2px; flex-shrink:0;}
+  .contrib-empty{padding:16px 14px; color:var(--ink-faint); font-size:12.5px; font-style:italic; text-align:center;}
+  .contrib-edit-row{display:flex; gap:8px; align-items:flex-end; padding:10px 14px; background:var(--surface); border-bottom:1px solid var(--border); flex-wrap:wrap;}
+  .contrib-edit-row div{flex:1; min-width:100px;}
+  .contrib-edit-row input{width:100%; padding:8px 10px; border:1px solid var(--border); border-radius:7px; font-size:13px;}
+  .contrib-thumb{width:36px; height:36px; border-radius:6px; object-fit:cover; cursor:pointer; border:1px solid var(--border); vertical-align:middle;}
+  .contrib-thumb:hover{opacity:0.8;}
+  .contrib-evidence{display:flex; align-items:center; gap:2px;}
+  .del-evidence-btn{font-size:10px; padding:0 3px; line-height:1;}
+  .evidence-modal{position:fixed; inset:0; background:rgba(0,0,0,0.75); display:flex; align-items:center; justify-content:center; z-index:100; cursor:pointer;}
+  .evidence-modal img{max-width:90vw; max-height:90vh; border-radius:10px; box-shadow:0 8px 32px rgba(0,0,0,0.4);}
+  .contrib-file-input{font-size:12px;}
+  .contrib-file-input input[type="file"]{font-size:11px; padding:4px 0;}
+  .contrib-preview{margin-top:6px;}
+  .contrib-preview img{max-width:80px; max-height:80px; border-radius:6px; border:1px solid var(--border); object-fit:cover;}
+  .empty{color:var(--ink-faint); font-size:13px; padding:20px 4px; font-style:italic; text-align:center;}
+
+  form.entry-form{
+    display:grid; grid-template-columns:repeat(4,1fr); gap:12px;
+    background:var(--surface); border:1px solid var(--border); border-radius:var(--radius);
+    padding:20px; margin-bottom:26px;
+  }
+  form.entry-form .full{grid-column:1/-1;}
+  label{font-size:11px; font-weight:600; color:var(--ink-soft); text-transform:uppercase; letter-spacing:0.03em; display:block; margin-bottom:5px;}
+  input, select{width:100%; padding:10px 11px; border:1px solid var(--border); border-radius:7px; background:var(--surface); font-family:'Inter',sans-serif; font-size:13.5px; color:var(--ink);}
+  input:focus, select:focus{outline:2px solid var(--accent); outline-offset:1px; border-color:var(--accent);}
+  .btn{font-family:'Space Grotesk',sans-serif; font-weight:600; font-size:13.5px; padding:10px 18px; border-radius:7px; border:none; cursor:pointer; background:var(--ink); color:#fff; transition:opacity .15s;}
+  .btn:hover{opacity:0.85;}
+  .btn.small{padding:7px 13px; font-size:12.5px;}
+  .btn.danger{background:var(--red);}
+  .btn.outline{background:transparent; color:var(--ink); border:1px solid var(--border);}
+
+  .filter-row{display:flex; gap:8px; margin-bottom:14px; flex-wrap:wrap;}
+  .chip{font-size:12px; font-weight:600; padding:6px 13px; border-radius:20px; border:1px solid var(--border); background:var(--surface); cursor:pointer; color:var(--ink-soft);}
+  .chip.active{background:var(--ink); color:#fff; border-color:var(--ink);}
+
+  .plan-grid{display:flex; flex-direction:column; gap:14px;}
+  .plan-card{background:var(--surface); border:1px solid var(--border); border-radius:var(--radius); padding:20px 22px; position:relative;}
+  .plan-head{display:flex; justify-content:space-between; align-items:flex-start; gap:10px;}
+  .plan-head h3{font-size:16.5px;}
+  .plan-sub{font-size:11.5px; color:var(--ink-soft); font-family:'JetBrains Mono',monospace; margin-top:3px;}
+  .badge-done{font-size:11px; font-weight:700; color:var(--accent); background:var(--accent-soft); padding:4px 10px; border-radius:20px; text-transform:uppercase; letter-spacing:0.03em;}
+  .progress-track{background:var(--accent-soft); border-radius:6px; height:12px; margin:14px 0 8px; overflow:hidden;}
+  .progress-fill{height:100%; background:var(--accent); border-radius:6px; transition:width .4s ease;}
+  .plan-meta{display:flex; justify-content:space-between; font-size:12px; color:var(--ink-soft); font-family:'JetBrains Mono',monospace;}
+  .plan-note{font-size:12.5px; color:var(--ink-soft); margin-top:10px;}
+  .plan-actions{display:flex; gap:8px; margin-top:16px; flex-wrap:wrap;}
+  .contrib-form{display:flex; gap:8px; margin-top:12px; align-items:flex-end; flex-wrap:wrap;}
+  .contrib-form div{flex:1; min-width:140px;}
+  .radio-row{display:flex; gap:18px; align-items:center; font-size:12.5px; margin-bottom:4px; flex-wrap:wrap;}
+  .radio-row label{display:flex; align-items:center; gap:6px; text-transform:none; font-weight:500; margin:0;}
+  .radio-row input{width:auto;}
+
+  footer{padding:30px 0 60px; text-align:center;}
+  .reset-link{font-size:12px; color:var(--ink-faint); background:none; border:none; cursor:pointer; text-decoration:underline;}
+
+  @media (max-width:720px){
+    .nav-wrap{flex-direction:column; align-items:flex-start; gap:10px;}
+    nav{width:100%; overflow-x:auto;}
+    .cards{grid-template-columns:repeat(2,1fr);}
+    form.entry-form{grid-template-columns:1fr 1fr;}
+    .hero{padding:36px 0 24px;}
+    .ledger thead{display:none;}
+    .ledger tbody{display:flex; flex-direction:column; gap:10px;}
+    .ledger tr{
+      display:block; background:var(--surface);
+      border:1px solid var(--border); border-radius:var(--radius);
+      padding:14px 16px;
+    }
+    .ledger td{
+      display:flex; justify-content:space-between; align-items:center;
+      padding:5px 0; border-bottom:none;
+    }
+    .ledger td::before{
+      content:attr(data-label); font-size:11px; font-weight:600;
+      color:var(--ink-faint); text-transform:uppercase; letter-spacing:0.03em;
+    }
+    .ledger td.amt-col{justify-content:flex-end;}
+    .ledger td.action-col{justify-content:flex-end; border-bottom:none;}
+    .bar-row{grid-template-columns:70px 1fr 80px; gap:8px;}
+    .plan-card{padding:16px;}
+    .plan-meta{flex-direction:column; gap:4px;}
+    .contrib-form div{min-width:100%;}
+  }
+
+  @media (max-width:400px){
+    .cards{grid-template-columns:1fr;}
+    form.entry-form{grid-template-columns:1fr;}
+    .hero h1{font-size:24px;}
+    main{padding:0 16px;}
+    .bar-row{grid-template-columns:60px 1fr 70px;}
+  }
+
+  @media (prefers-reduced-motion: reduce){ *{transition:none !important;} }
+
+  /* Auth styles */
+  .auth-container{
+    max-width:400px; margin:80px auto 0; padding:0 24px;
+  }
+  .auth-card{
+    background:var(--surface); border:1px solid var(--border); border-radius:var(--radius);
+    padding:32px;
+  }
+  .auth-card h2{font-size:22px; margin-bottom:4px;}
+  .auth-card .subtitle{color:var(--ink-soft); font-size:13.5px; margin-bottom:24px;}
+  .auth-card form{display:flex; flex-direction:column; gap:14px;}
+  .auth-card .btn{width:100%; padding:12px; font-size:14px; margin-top:4px;}
+  .auth-card .toggle-text{font-size:13px; color:var(--ink-soft); text-align:center; margin-top:16px;}
+  .auth-card .toggle-text a{color:var(--accent); cursor:pointer; font-weight:600; text-decoration:none;}
+  .auth-card .toggle-text a:hover{text-decoration:underline;}
+  .auth-error{background:var(--red-soft); color:var(--red); padding:10px 14px; border-radius:7px; font-size:12.5px; display:none;}
+  .loading-screen{
+    display:flex; align-items:center; justify-content:center;
+    min-height:60vh; color:var(--ink-soft); font-size:14px;
+  }
+</style>
+</head>
+<body>
+
+<!-- AUTH SCREEN -->
+<div id="authScreen" style="display:none;">
+  <header>
+    <div class="nav-wrap">
+      <div class="brand"><span class="dot"></span>Kas</div>
+      <button class="theme-toggle" id="themeToggleAuth" title="Ganti tema"><i class="fas fa-sun"></i></button>
+    </div>
+  </header>
+  <div class="auth-container">
+    <div class="auth-card">
+      <h2 id="authTitle">Masuk</h2>
+      <p class="subtitle" id="authSubtitle">Selamat datang kembali.</p>
+      <div class="auth-error" id="authError"></div>
+      <form id="authForm">
+        <div id="nameField" style="display:none;">
+          <label>Nama</label>
+          <input type="text" id="authName" placeholder="Nama lengkap">
+        </div>
+        <div>
+          <label>Email</label>
+          <input type="email" id="authEmail" placeholder="email@contoh.com" required>
+        </div>
+        <div>
+          <label>Password</label>
+          <input type="password" id="authPassword" placeholder="Minimal 6 karakter" required minlength="6">
+        </div>
+        <button type="submit" class="btn" id="authSubmitBtn">Masuk</button>
+      </form>
+      <p class="toggle-text">
+        <span id="authToggleText">Belum punya akun? </span>
+        <a id="authToggleLink">Daftar</a>
+      </p>
+    </div>
+  </div>
+</div>
+
+<!-- LOADING -->
+<div id="loadingScreen" class="loading-screen" style="display:none;">
+  <i class="fas fa-spinner fa-spin" style="margin-right:8px;"></i> Memuat data...
+</div>
+
+<!-- MAIN APP -->
+<div id="appScreen" style="display:none;">
+<header>
+  <div class="nav-wrap">
+    <div class="brand"><span class="dot"></span>Kas</div>
+    <nav>
+      <a href="#dasbor" class="active">Dasbor</a>
+      <a href="#transaksi">Transaksi</a>
+      <a href="#rencana">Rencana Aset</a>
+    </nav>
+    <div class="user-info">
+      <span class="user-email" id="userEmail"></span>
+      <button class="logout-btn" id="logoutBtn">Keluar</button>
+      <button class="theme-toggle" id="themeToggle" title="Ganti tema"><i class="fas fa-sun"></i></button>
+    </div>
+  </div>
+</header>
+
+<main>
+
+  <section class="block page active" id="dasbor">
+    <div class="hero">
+      <h1>Kelola keuangan, capai target asetmu.</h1>
+      <p>Catat pemasukan dan pengeluaran harian, lalu rencanakan cicilan untuk aset yang ingin kamu miliki.</p>
+    </div>
+
+    <div class="block-head">
+      <h2>Dasbor</h2>
+      <span class="desc" id="todayStamp"></span>
+    </div>
+
+    <div class="cards">
+      <div class="card balance"><div class="label">Saldo Tersedia</div><div class="value" id="cardBalance">Rp 0</div></div>
+      <div class="card income"><div class="label">Total Pemasukan</div><div class="value" id="cardIncome">Rp 0</div></div>
+      <div class="card expense"><div class="label">Total Pengeluaran</div><div class="value" id="cardExpense">Rp 0</div></div>
+      <div class="card saving"><div class="label">Total Tabungan Aset</div><div class="value" id="cardSaving">Rp 0</div></div>
+    </div>
+
+    <div class="bars" id="monthBars"></div>
+
+    <table class="ledger" style="margin-top:30px;">
+      <thead><tr><th>Tanggal</th><th>Jenis</th><th>Kategori / Catatan</th><th style="text-align:right">Jumlah</th></tr></thead>
+      <tbody id="recentBody"></tbody>
+    </table>
+
+    <footer>
+      <button class="reset-link" id="resetBtn">Hapus semua data</button>
+    </footer>
+  </section>
+
+  <section class="block page" id="transaksi">
+    <div class="block-head">
+      <h2>Transaksi</h2>
+      <span class="desc">Tambahkan pemasukan dan pengeluaran</span>
+    </div>
+
+    <form class="entry-form" id="txForm">
+      <div>
+        <label>Tanggal</label>
+        <input type="date" id="txDate" required>
+      </div>
+      <div>
+        <label>Jenis</label>
+        <select id="txType">
+          <option value="income">Pemasukan</option>
+          <option value="expense">Pengeluaran</option>
+        </select>
+      </div>
+      <div>
+        <label>Kategori</label>
+        <input type="text" id="txCategory" list="catList" placeholder="cth: Gaji, Makan" required>
+        <datalist id="catList">
+          <option value="Gaji"></option><option value="Bonus"></option><option value="Makanan"></option>
+          <option value="Transportasi"></option><option value="Tagihan"></option><option value="Hiburan"></option>
+          <option value="Kesehatan"></option><option value="Belanja"></option><option value="Lainnya"></option>
+        </datalist>
+      </div>
+      <div>
+        <label>Jumlah (Rp)</label>
+        <input type="number" id="txAmount" min="0" step="1" required placeholder="0">
+      </div>
+      <div class="full">
+        <label>Catatan (opsional)</label>
+        <input type="text" id="txNote" placeholder="Detail tambahan...">
+      </div>
+      <div class="full" style="display:flex; gap:8px; flex-wrap:wrap;">
+        <button type="submit" class="btn" id="txSubmitBtn">+ Tambah Transaksi</button>
+        <button type="submit" class="btn" id="txUpdateBtn" style="display:none;">Update Transaksi</button>
+        <button type="button" class="btn outline" id="txCancelBtn" style="display:none;">Batal</button>
+      </div>
+    </form>
+
+    <div class="filter-row" id="filterRow">
+      <button class="chip active" data-filter="all">Semua</button>
+      <button class="chip" data-filter="income">Pemasukan</button>
+      <button class="chip" data-filter="expense">Pengeluaran</button>
+      <button class="chip" data-filter="saving">Tabungan Aset</button>
+    </div>
+    <table class="ledger">
+      <thead><tr><th>Tanggal</th><th>Jenis</th><th>Kategori / Catatan</th><th style="text-align:right">Jumlah</th><th></th></tr></thead>
+      <tbody id="txBody"></tbody>
+    </table>
+  </section>
+
+  <section class="block page" id="rencana">
+    <div class="block-head">
+      <h2>Rencana Aset</h2>
+      <span class="desc">Cicil sedikit demi sedikit hingga target tercapai</span>
+    </div>
+
+    <form class="entry-form" id="planForm">
+      <div class="full">
+        <label>Nama Aset</label>
+        <input type="text" id="planName" placeholder="cth: Motor, Laptop, Rumah DP" required>
+      </div>
+      <div>
+        <label>Harga Target (Rp)</label>
+        <input type="number" id="planTarget" min="1" step="1" required placeholder="0">
+      </div>
+      <div class="full">
+        <div class="radio-row">
+          <label><input type="radio" name="planMode" value="date" checked> Berdasarkan tanggal target</label>
+          <label><input type="radio" name="planMode" value="monthly"> Berdasarkan cicilan bulanan tetap</label>
+        </div>
+      </div>
+      <div id="planDateWrap">
+        <label>Tanggal Target</label>
+        <input type="date" id="planDate">
+      </div>
+      <div id="planMonthlyWrap" style="display:none">
+        <label>Cicilan per Bulan (Rp)</label>
+        <input type="number" id="planMonthly" min="0" step="1" placeholder="0">
+      </div>
+      <div class="full">
+        <label>Link Pembelian (opsional)</label>
+        <input type="url" id="planLink" placeholder="https://...">
+      </div>
+      <div class="full" style="display:flex; gap:8px; flex-wrap:wrap;">
+        <button type="submit" class="btn" id="planSubmitBtn">+ Buat Rencana</button>
+        <button type="submit" class="btn" id="planUpdateBtn" style="display:none;">Update Rencana</button>
+        <button type="button" class="btn outline" id="planCancelBtn" style="display:none;">Batal</button>
+      </div>
+    </form>
+
+    <div class="plan-grid" id="planGrid"></div>
+  </section>
+
+</main>
+</div>
+
+<script>
+(function(){
+
+  const SUPABASE_URL = 'YOUR_SUPABASE_URL';
+  const SUPABASE_ANON_KEY = 'YOUR_SUPABASE_ANON_KEY';
+  const _supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+  function getPreferredTheme(){
+    const saved = localStorage.getItem('theme');
+    if(saved) return saved;
+    return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+  }
+  function setTheme(theme){
+    document.documentElement.setAttribute('data-theme', theme);
+    const icon = theme==='dark' ? '<i class="fas fa-sun"></i>' : '<i class="fas fa-moon"></i>';
+    document.getElementById('themeToggle').innerHTML = icon;
+    const iconAuth = document.getElementById('themeToggleAuth');
+    if(iconAuth) iconAuth.innerHTML = icon;
+    localStorage.setItem('theme', theme);
+  }
+  setTheme(getPreferredTheme());
+
+  document.addEventListener('click', (e)=>{
+    if(e.target.closest('#themeToggle') || e.target.closest('#themeToggleAuth')){
+      const current = document.documentElement.getAttribute('data-theme');
+      setTheme(current==='dark' ? 'light' : 'dark');
+    }
+  });
+
+  const fmt = new Intl.NumberFormat('id-ID', {style:'currency', currency:'IDR', minimumFractionDigits:0, maximumFractionDigits:0});
+  const fmtNum = n => fmt.format(Math.round(n||0));
+  const todayISO = () => new Date().toISOString().slice(0,10);
+
+  let transactions = [];
+  let plans = [];
+  let currentFilter = 'all';
+  let editingId = null;
+  let editingPlanId = null;
+  let currentUser = null;
+  let isLoginMode = true;
+
+  function escapeHtml(s){
+    return (s||'').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+  }
+
+  // ========== AUTH ==========
+
+  async function checkUser(){
+    const { data: { session } } = await _supabase.auth.getSession();
+    if(session && session.user){
+      currentUser = session.user;
+      showApp();
+    } else {
+      showAuth();
+    }
+  }
+
+  function showAuth(){
+    document.getElementById('authScreen').style.display = '';
+    document.getElementById('loadingScreen').style.display = 'none';
+    document.getElementById('appScreen').style.display = 'none';
+    setAuthMode(true);
+  }
+
+  function showApp(){
+    document.getElementById('authScreen').style.display = 'none';
+    document.getElementById('loadingScreen').style.display = 'none';
+    document.getElementById('appScreen').style.display = '';
+    document.getElementById('userEmail').textContent = currentUser.email;
+    loadAll();
+  }
+
+  function showLoading(){
+    document.getElementById('authScreen').style.display = 'none';
+    document.getElementById('loadingScreen').style.display = '';
+    document.getElementById('appScreen').style.display = 'none';
+  }
+
+  function setAuthMode(login){
+    isLoginMode = login;
+    document.getElementById('authTitle').textContent = login ? 'Masuk' : 'Daftar';
+    document.getElementById('authSubtitle').textContent = login ? 'Selamat datang kembali.' : 'Buat akun baru untuk mulai.';
+    document.getElementById('authSubmitBtn').textContent = login ? 'Masuk' : 'Daftar';
+    document.getElementById('authToggleText').textContent = login ? 'Belum punya akun? ' : 'Sudah punya akun? ';
+    document.getElementById('authToggleLink').textContent = login ? 'Daftar' : 'Masuk';
+    document.getElementById('nameField').style.display = login ? 'none' : 'block';
+    document.getElementById('authError').style.display = 'none';
+    document.getElementById('authForm').reset();
+  }
+
+  document.getElementById('authToggleLink').addEventListener('click', ()=>{
+    setAuthMode(!isLoginMode);
+  });
+
+  document.getElementById('authForm').addEventListener('submit', async (e)=>{
+    e.preventDefault();
+    const email = document.getElementById('authEmail').value.trim();
+    const password = document.getElementById('authPassword').value;
+    const errEl = document.getElementById('authError');
+
+    if(isLoginMode){
+      const { error } = await _supabase.auth.signInWithPassword({ email, password });
+      if(error){
+        errEl.textContent = error.message === 'Invalid login credentials' ? 'Email atau password salah.' : error.message;
+        errEl.style.display = '';
+        return;
+      }
+      const { data: { session } } = await _supabase.auth.getSession();
+      currentUser = session.user;
+      showApp();
+    } else {
+      const name = document.getElementById('authName').value.trim();
+      const { error } = await _supabase.auth.signUp({ email, password, options: { data: { name } } });
+      if(error){
+        errEl.textContent = error.message;
+        errEl.style.display = '';
+        return;
+      }
+      errEl.textContent = 'Akun berhasil dibuat! Silakan cek email untuk verifikasi, lalu masuk.';
+      errEl.style.display = '';
+      errEl.style.background = 'var(--accent-soft)';
+      errEl.style.color = 'var(--accent)';
+      setTimeout(()=>{ setAuthMode(true); }, 2000);
+    }
+  });
+
+  document.getElementById('logoutBtn').addEventListener('click', async ()=>{
+    await _supabase.auth.signOut();
+    currentUser = null;
+    transactions = [];
+    plans = [];
+    showAuth();
+  });
+
+  _supabase.auth.onAuthStateChange((event, session)=>{
+    if(event === 'SIGNED_IN' && session){
+      currentUser = session.user;
+    } else if(event === 'SIGNED_OUT'){
+      currentUser = null;
+    }
+  });
+
+  // ========== DATA LOADING ==========
+
+  async function loadAll(){
+    try{
+      const { data: t, error: te } = await _supabase
+        .from('transactions')
+        .select('id, date, type, category, amount, note, plan_id, evidence')
+        .order('date', { ascending: false })
+        .order('id', { ascending: false });
+      transactions = (!te && Array.isArray(t)) ? t.map(r=>({...r, planId: r.plan_id})) : [];
+    }catch(e){ transactions = []; }
+    try{
+      const { data: p, error: pe } = await _supabase
+        .from('plans')
+        .select('id, name, target_amount, mode, target_date, monthly_fixed, purchase_link, created_at')
+        .order('created_at', { ascending: false });
+      plans = (!pe && Array.isArray(p)) ? p.map(r=>({
+        ...r,
+        targetAmount: r.target_amount,
+        targetDate: r.target_date,
+        monthlyFixed: r.monthly_fixed,
+        purchaseLink: r.purchase_link,
+        createdAt: r.created_at
+      })) : [];
+    }catch(e){ plans = []; }
+    renderAll();
+  }
+
+  // ========== NAVIGATION ==========
+
+  const navLinks = document.querySelectorAll('nav a');
+  const allPages = document.querySelectorAll('.page');
+  const validHashes = ['dasbor','transaksi','rencana'];
+
+  function navigateTo(hash){
+    const id = hash.replace('#','');
+    if(!validHashes.includes(id)){
+      location.hash = '#dasbor';
+      return;
+    }
+    allPages.forEach(p => p.classList.toggle('active', p.id === id));
+    navLinks.forEach(l => l.classList.toggle('active', l.getAttribute('href') === '#'+id));
+    window.scrollTo(0,0);
+  }
+
+  window.addEventListener('hashchange', ()=> navigateTo(location.hash));
+  if(!location.hash) location.hash = '#dasbor';
+
+  document.getElementById('todayStamp').textContent = new Date().toLocaleDateString('id-ID', {day:'2-digit', month:'long', year:'numeric'});
+  document.getElementById('txDate').value = todayISO();
+
+  // ========== DASHBOARD ==========
+
+  function totals(){
+    let income=0, expense=0, saving=0;
+    transactions.forEach(t=>{
+      if(t.type==='income') income += t.amount;
+      else if(t.type==='expense') expense += t.amount;
+      else if(t.type==='saving') saving += t.amount;
+    });
+    return {income, expense, saving, balance: income - expense - saving};
+  }
+
+  function renderDashboard(){
+    const {income, expense, saving, balance} = totals();
+    document.getElementById('cardBalance').textContent = fmtNum(balance);
+    document.getElementById('cardIncome').textContent = fmtNum(income);
+    document.getElementById('cardExpense').textContent = fmtNum(expense);
+    document.getElementById('cardSaving').textContent = fmtNum(saving);
+
+    const now = new Date();
+    const ym = now.getFullYear()+'-'+String(now.getMonth()+1).padStart(2,'0');
+    let mi=0, me=0, ms=0;
+    transactions.forEach(t=>{
+      if(t.date && t.date.startsWith(ym)){
+        if(t.type==='income') mi+=t.amount;
+        else if(t.type==='expense') me+=t.amount;
+        else if(t.type==='saving') ms+=t.amount;
+      }
+    });
+    const max = Math.max(mi, me, ms, 1);
+    document.getElementById('monthBars').innerHTML = `
+      <div class="bar-row"><span class="lbl">Pemasukan</span><div class="bar-track"><div class="bar-fill income" style="width:${(mi/max*100)}%"></div></div><span class="amt">${fmtNum(mi)}</span></div>
+      <div class="bar-row"><span class="lbl">Pengeluaran</span><div class="bar-track"><div class="bar-fill expense" style="width:${(me/max*100)}%"></div></div><span class="amt">${fmtNum(me)}</span></div>
+      <div class="bar-row"><span class="lbl">Tabungan</span><div class="bar-track"><div class="bar-fill saving" style="width:${(ms/max*100)}%"></div></div><span class="amt">${fmtNum(ms)}</span></div>
+    `;
+
+    const recent = [...transactions].sort((a,b)=> b.date.localeCompare(a.date) || b.id - a.id).slice(0,6);
+    const body = document.getElementById('recentBody');
+    body.innerHTML = recent.length===0
+      ? `<tr><td colspan="4" class="empty">Belum ada transaksi. Tambahkan di bagian Transaksi.</td></tr>`
+      : recent.map(rowHtml(false)).join('');
+  }
+
+  function typeLabel(t){ return t==='income' ? 'Pemasukan' : t==='expense' ? 'Pengeluaran' : 'Tabungan'; }
+  function rowHtml(withDelete){
+    return t => {
+      const catNote = t.note ? `${escapeHtml(t.category)} — <span style="color:var(--ink-faint)">${escapeHtml(t.note)}</span>` : escapeHtml(t.category);
+      const sign = t.type==='income' ? '+' : '-';
+      return `<tr>
+        <td data-label="Tanggal">${formatDate(t.date)}</td>
+        <td data-label="Jenis"><span class="type-tag ${t.type}">${typeLabel(t.type)}</span></td>
+        <td data-label="Kategori">${catNote}</td>
+        <td data-label="Jumlah" class="amt-col">${sign} ${fmtNum(t.amount)}</td>
+        ${withDelete ? `<td class="action-col"><button class="edit-btn" data-edit="${t.id}" title="Edit">✎</button><button class="del-btn" data-del="${t.id}" title="Hapus">✕</button></td>` : ''}
+      </tr>`;
+    };
+  }
+  function formatDate(iso){
+    if(!iso) return '-';
+    return new Date(iso+'T00:00:00').toLocaleDateString('id-ID', {day:'2-digit', month:'short', year:'numeric'});
+  }
+
+  // ========== TRANSACTIONS ==========
+
+  function renderTransaksi(){
+    let list = [...transactions].sort((a,b)=> b.date.localeCompare(a.date) || b.id - a.id);
+    if(currentFilter !== 'all') list = list.filter(t=>t.type===currentFilter);
+    const body = document.getElementById('txBody');
+    body.innerHTML = list.length===0
+      ? `<tr><td colspan="5" class="empty">Tidak ada transaksi untuk filter ini.</td></tr>`
+      : list.map(rowHtml(true)).join('');
+    body.querySelectorAll('[data-del]').forEach(btn=>{
+      btn.addEventListener('click', async ()=>{
+        const id = Number(btn.dataset.del);
+        if(confirm('Hapus transaksi ini?')){
+          try{
+            const { error } = await _supabase.from('transactions').delete().eq('id', id);
+            if(error) throw error;
+            transactions = transactions.filter(t=>t.id!==id);
+            renderAll();
+          }catch(err){
+            alert('Gagal menghapus transaksi.');
+          }
+        }
+      });
+    });
+    body.querySelectorAll('[data-edit]').forEach(btn=>{
+      btn.addEventListener('click', ()=>{
+        const id = Number(btn.dataset.edit);
+        const tx = transactions.find(t=>t.id===id);
+        if(!tx) return;
+        editingId = id;
+        document.getElementById('txDate').value = tx.date;
+        document.getElementById('txType').value = tx.type;
+        document.getElementById('txCategory').value = tx.category;
+        document.getElementById('txAmount').value = tx.amount;
+        document.getElementById('txNote').value = tx.note || '';
+        document.getElementById('txSubmitBtn').style.display = 'none';
+        document.getElementById('txUpdateBtn').style.display = '';
+        document.getElementById('txCancelBtn').style.display = '';
+        document.getElementById('txForm').scrollIntoView({behavior:'smooth', block:'center'});
+      });
+    });
+  }
+
+  document.querySelectorAll('.chip').forEach(chip=>{
+    chip.addEventListener('click', ()=>{
+      document.querySelectorAll('.chip').forEach(c=>c.classList.remove('active'));
+      chip.classList.add('active');
+      currentFilter = chip.dataset.filter;
+      renderTransaksi();
+    });
+  });
+
+  function resetFormMode(){
+    editingId = null;
+    document.getElementById('txForm').reset();
+    document.getElementById('txDate').value = todayISO();
+    document.getElementById('txSubmitBtn').style.display = '';
+    document.getElementById('txUpdateBtn').style.display = 'none';
+    document.getElementById('txCancelBtn').style.display = 'none';
+  }
+
+  document.getElementById('txCancelBtn').addEventListener('click', resetFormMode);
+
+  document.getElementById('txForm').addEventListener('submit', async (e)=>{
+    e.preventDefault();
+    if(editingId){
+      const tx = {
+        date: document.getElementById('txDate').value || todayISO(),
+        type: document.getElementById('txType').value,
+        category: document.getElementById('txCategory').value.trim() || 'Lainnya',
+        amount: Number(document.getElementById('txAmount').value) || 0,
+        note: document.getElementById('txNote').value.trim()
+      };
+      if(tx.amount <= 0) return;
+      try{
+        const { error } = await _supabase.from('transactions').update(tx).eq('id', editingId);
+        if(error) throw error;
+        const idx = transactions.findIndex(t=>t.id===editingId);
+        if(idx>=0) transactions[idx] = {...transactions[idx], ...tx};
+        resetFormMode();
+        renderAll();
+        alert('Transaksi berhasil diupdate!');
+      }catch(err){
+        alert('Gagal mengupdate transaksi.');
+      }
+    } else {
+      const tx = {
+        id: Date.now(),
+        user_id: currentUser.id,
+        date: document.getElementById('txDate').value || todayISO(),
+        type: document.getElementById('txType').value,
+        category: document.getElementById('txCategory').value.trim() || 'Lainnya',
+        amount: Number(document.getElementById('txAmount').value) || 0,
+        note: document.getElementById('txNote').value.trim()
+      };
+      if(tx.amount <= 0) return;
+      try{
+        const { error } = await _supabase.from('transactions').insert(tx);
+        if(error) throw error;
+        transactions.push({id:tx.id, date:tx.date, type:tx.type, category:tx.category, amount:tx.amount, note:tx.note, planId:tx.plan_id, evidence:tx.evidence});
+        e.target.reset();
+        document.getElementById('txDate').value = todayISO();
+        renderAll();
+        alert('Transaksi berhasil disimpan!');
+      }catch(err){
+        alert('Gagal menyimpan transaksi.');
+      }
+    }
+  });
+
+  // ========== PLANS ==========
+
+  document.querySelectorAll('input[name="planMode"]').forEach(r=>{
+    r.addEventListener('change', ()=>{
+      const mode = document.querySelector('input[name="planMode"]:checked').value;
+      document.getElementById('planDateWrap').style.display = mode==='date' ? 'block' : 'none';
+      document.getElementById('planMonthlyWrap').style.display = mode==='monthly' ? 'block' : 'none';
+    });
+  });
+
+  function resetPlanFormMode(){
+    editingPlanId = null;
+    document.getElementById('planForm').reset();
+    document.getElementById('planDateWrap').style.display='block';
+    document.getElementById('planMonthlyWrap').style.display='none';
+    document.getElementById('planSubmitBtn').style.display = '';
+    document.getElementById('planUpdateBtn').style.display = 'none';
+    document.getElementById('planCancelBtn').style.display = 'none';
+  }
+
+  document.getElementById('planCancelBtn').addEventListener('click', resetPlanFormMode);
+
+  document.getElementById('planForm').addEventListener('submit', async (e)=>{
+    e.preventDefault();
+    const mode = document.querySelector('input[name="planMode"]:checked').value;
+    const planData = {
+      name: document.getElementById('planName').value.trim(),
+      target_amount: Number(document.getElementById('planTarget').value) || 0,
+      mode: mode,
+      target_date: mode==='date' ? document.getElementById('planDate').value : null,
+      monthly_fixed: mode==='monthly' ? Number(document.getElementById('planMonthly').value)||0 : 0,
+      purchase_link: document.getElementById('planLink').value.trim() || null
+    };
+    if(!planData.name || planData.target_amount<=0) return;
+    if(planData.mode==='date' && !planData.target_date) return;
+    if(planData.mode==='monthly' && planData.monthly_fixed<=0) return;
+
+    if(editingPlanId){
+      try{
+        const { error } = await _supabase.from('plans').update(planData).eq('id', editingPlanId);
+        if(error) throw error;
+        const idx = plans.findIndex(p=>p.id===editingPlanId);
+        if(idx>=0){
+          plans[idx] = {...plans[idx],
+            name: planData.name, targetAmount: planData.target_amount, mode: planData.mode,
+            targetDate: planData.target_date, monthlyFixed: planData.monthly_fixed, purchaseLink: planData.purchase_link
+          };
+        }
+        resetPlanFormMode();
+        renderAll();
+        alert('Rencana berhasil diupdate!');
+      }catch(err){
+        alert('Gagal mengupdate rencana.');
+      }
+    } else {
+      const plan = {
+        id: Date.now(),
+        user_id: currentUser.id,
+        ...planData,
+        created_at: todayISO()
+      };
+      try{
+        const { error } = await _supabase.from('plans').insert(plan);
+        if(error) throw error;
+        plans.push({
+          id:plan.id, name:plan.name, targetAmount:plan.target_amount, mode:plan.mode,
+          targetDate:plan.target_date, monthlyFixed:plan.monthly_fixed, purchaseLink:plan.purchase_link, createdAt:plan.created_at
+        });
+        e.target.reset();
+        document.getElementById('planDateWrap').style.display='block';
+        document.getElementById('planMonthlyWrap').style.display='none';
+        renderAll();
+        alert('Rencana aset berhasil dibuat!');
+      }catch(err){
+        alert('Gagal menyimpan rencana.');
+      }
+    }
+  });
+
+  function monthsBetween(fromISO, toISO){
+    if(!toISO) return 1;
+    const from = new Date(fromISO+'T00:00:00');
+    const to = new Date(toISO+'T00:00:00');
+    let months = (to.getFullYear()-from.getFullYear())*12 + (to.getMonth()-from.getMonth());
+    if(to.getDate() > from.getDate()) months += 1;
+    return Math.max(months, 1);
+  }
+
+  function savedForPlan(planId){
+    return transactions.filter(t=>t.type==='saving' && t.planId===planId).reduce((s,t)=>s+t.amount,0);
+  }
+  function getContributions(planId){
+    return transactions.filter(t=>t.type==='saving' && t.planId===planId)
+      .sort((a,b)=> b.date.localeCompare(a.date) || b.id - a.id);
+  }
+
+  function renderContribList(planId){
+    const wrap = document.getElementById('contribList-'+planId);
+    if(!wrap) return;
+    const contribs = getContributions(planId);
+    if(contribs.length===0){
+      wrap.innerHTML = `<div class="contrib-list"><div class="contrib-empty">Belum ada setoran.</div></div>`;
+      return;
+    }
+    const total = contribs.reduce((s,t)=>s+t.amount,0);
+    wrap.innerHTML = `
+    <div class="contrib-list">
+      <div class="contrib-list-head">${contribs.length} setoran &middot; Total: ${fmtNum(total)}</div>
+      ${contribs.map(c=>`
+        <div class="contrib-item" id="contribItem-${c.id}">
+          <span class="contrib-date">📅 ${formatDate(c.date)}</span>
+          <span class="contrib-amt">${fmtNum(c.amount)}</span>
+          ${c.evidence ? `<span class="contrib-evidence"><img class="contrib-thumb" src="${c.evidence}" data-showevidence="${c.id}" title="Lihat bukti"><button class="del-btn del-evidence-btn" data-delevidence="${c.id}" title="Hapus bukti">✕</button></span>` : ''}
+          <span class="contrib-actions">
+            <button class="edit-btn" data-editcontrib="${c.id}" title="Edit">✎</button>
+            <button class="del-btn" data-delcontrib="${c.id}" title="Hapus">✕</button>
+          </span>
+        </div>
+      `).join('')}
+    </div>`;
+    wrap.querySelectorAll('[data-showevidence]').forEach(img=>{
+      img.addEventListener('click', ()=>{
+        showEvidenceModal(img.src);
+      });
+    });
+    wrap.querySelectorAll('[data-delevidence]').forEach(btn=>{
+      btn.addEventListener('click', async ()=>{
+        const id = Number(btn.dataset.delevidence);
+        if(!confirm('Hapus bukti gambar ini?')) return;
+        try{
+          const tx = transactions.find(t=>t.id===id);
+          const { error } = await _supabase.from('transactions').update({evidence: null}).eq('id', id);
+          if(error) throw error;
+          const idx = transactions.findIndex(t=>t.id===id);
+          if(idx>=0) transactions[idx].evidence = null;
+          renderContribList(planId);
+        }catch(err){ alert('Gagal menghapus bukti.'); }
+      });
+    });
+    wrap.querySelectorAll('[data-editcontrib]').forEach(btn=>{
+      btn.addEventListener('click', ()=>{
+        const id = Number(btn.dataset.editcontrib);
+        const tx = transactions.find(t=>t.id===id);
+        if(!tx) return;
+        const item = document.getElementById('contribItem-'+id);
+        item.outerHTML = `
+        <div class="contrib-edit-row" id="contribItem-${id}">
+          <div>
+            <label style="font-size:10px; font-weight:600; color:var(--ink-faint); text-transform:uppercase; letter-spacing:0.03em;">Tanggal</label>
+            <input type="date" id="editContribDate-${id}" value="${tx.date}">
+          </div>
+          <div>
+            <label style="font-size:10px; font-weight:600; color:var(--ink-faint); text-transform:uppercase; letter-spacing:0.03em;">Jumlah (Rp)</label>
+            <input type="number" min="1" step="1" id="editContribAmt-${id}" value="${tx.amount}">
+          </div>
+          <div class="contrib-file-input">
+            <label style="font-size:10px; font-weight:600; color:var(--ink-faint); text-transform:uppercase; letter-spacing:0.03em;">Bukti</label>
+            ${tx.evidence ? `<div class="contrib-preview"><img src="${tx.evidence}"></div>` : ''}
+            <input type="file" accept="image/*" id="editContribFile-${id}">
+          </div>
+          <div style="display:flex; gap:6px; padding-top:18px;">
+            <button class="btn small" data-saveeditcontrib="${id}">Simpan</button>
+            <button class="btn small outline" datacanceleditcontrib="${id}">Batal</button>
+          </div>
+        </div>`;
+        wrap.querySelectorAll('[data-saveeditcontrib="'+id+'"]').forEach(b=>{
+          b.addEventListener('click', async ()=>{
+            const newDate = document.getElementById('editContribDate-'+id).value;
+            const newAmt = Number(document.getElementById('editContribAmt-'+id).value) || 0;
+            if(newAmt<=0) return;
+            let newEvidence = tx.evidence || null;
+            const fileInput = document.getElementById('editContribFile-'+id);
+            if(fileInput && fileInput.files && fileInput.files[0]){
+              const file = fileInput.files[0];
+              if(file.size > 5*1024*1024){ alert('Ukuran gambar maks 5MB.'); return; }
+              newEvidence = await compressImage(await fileToBase64(file), 800);
+            }
+            try{
+              const { error } = await _supabase.from('transactions').update({date:newDate, amount:newAmt, evidence:newEvidence}).eq('id', id);
+              if(error) throw error;
+              const idx = transactions.findIndex(t=>t.id===id);
+              if(idx>=0){ transactions[idx].date=newDate; transactions[idx].amount=newAmt; transactions[idx].evidence=newEvidence; }
+              renderContribList(planId);
+              renderDashboard();
+            }catch(err){ alert('Gagal mengupdate setoran.'); }
+          });
+        });
+        wrap.querySelectorAll('[datacanceleditcontrib="'+id+'"]').forEach(b=>{
+          b.addEventListener('click', ()=>{ renderContribList(planId); });
+        });
+      });
+    });
+    wrap.querySelectorAll('[data-delcontrib]').forEach(btn=>{
+      btn.addEventListener('click', async ()=>{
+        const id = Number(btn.dataset.delcontrib);
+        if(!confirm('Hapus setoran ini?')) return;
+        try{
+          const { error } = await _supabase.from('transactions').delete().eq('id', id);
+          if(error) throw error;
+          transactions = transactions.filter(t=>t.id!==id);
+          renderContribList(planId);
+          renderDashboard();
+        }catch(err){ alert('Gagal menghapus setoran.'); }
+      });
+    });
+  }
+
+  function fileToBase64(file){
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(reader.result);
+      reader.onerror = reject;
+      reader.readAsDataURL(file);
+    });
+  }
+  function compressImage(base64, maxWidth){
+    return new Promise((resolve) => {
+      const img = new Image();
+      img.onload = () => {
+        let w = img.width, h = img.height;
+        if(w > maxWidth){ h = Math.round(h * maxWidth / w); w = maxWidth; }
+        const canvas = document.createElement('canvas');
+        canvas.width = w; canvas.height = h;
+        canvas.getContext('2d').drawImage(img, 0, 0, w, h);
+        resolve(canvas.toDataURL('image/jpeg', 0.8));
+      };
+      img.src = base64;
+    });
+  }
+  function showEvidenceModal(src){
+    const modal = document.createElement('div');
+    modal.className = 'evidence-modal';
+    modal.innerHTML = `<img src="${src}">`;
+    modal.addEventListener('click', ()=> modal.remove());
+    const escHandler = (e)=>{ if(e.key==='Escape'){ modal.remove(); document.removeEventListener('keydown', escHandler); }};
+    document.addEventListener('keydown', escHandler);
+    document.body.appendChild(modal);
+  }
+
+  function renderRencana(){
+    const grid = document.getElementById('planGrid');
+    if(plans.length===0){
+      grid.innerHTML = `<div class="empty">Belum ada rencana aset. Buat satu di atas untuk mulai mencicil.</div>`;
+      return;
+    }
+    grid.innerHTML = plans.map(p=>{
+      const saved = savedForPlan(p.id);
+      const remaining = Math.max(p.targetAmount - saved, 0);
+      const pct = Math.min(100, Math.round((saved/p.targetAmount)*100));
+      const done = saved >= p.targetAmount;
+      let cicilanText = '';
+      if(!done){
+        if(p.mode==='date'){
+          const months = monthsBetween(todayISO(), p.targetDate);
+          const perMonth = remaining / months;
+          cicilanText = `Cicil ${fmtNum(perMonth)} / bulan agar tercapai ${formatDate(p.targetDate)} (${months} bln lagi)`;
+        }else{
+          const months = Math.ceil(remaining / p.monthlyFixed);
+          cicilanText = `Dengan cicilan ${fmtNum(p.monthlyFixed)} / bulan, tercapai dalam ${months} bulan lagi`;
+        }
+      }
+      return `
+      <div class="plan-card">
+        <div class="plan-head">
+          <div>
+            <h3>${escapeHtml(p.name)}</h3>
+            <div class="plan-sub">Target: ${fmtNum(p.targetAmount)}</div>
+          </div>
+          ${done ? `<span class="badge-done">Lunas</span>` : ''}
+        </div>
+        <div class="progress-track"><div class="progress-fill" style="width:${pct}%"></div></div>
+        <div class="plan-meta">
+          <span>${fmtNum(saved)} terkumpul (${pct}%)</span>
+          <span>${done ? 'Target tercapai' : fmtNum(remaining)+' lagi'}</span>
+        </div>
+        ${!done ? `<div class="plan-note">${cicilanText}</div>` : ''}
+        ${p.purchaseLink ? `<div class="plan-link">🔗 <a href="${escapeHtml(p.purchaseLink)}" target="_blank">Lihat Produk</a></div>` : ''}
+        <div class="plan-actions">
+          ${!done ? `<button class="btn small" data-contrib="${p.id}">+ Tambah Setoran</button>` : ''}
+          <button class="btn small outline" data-listcontrib="${p.id}">Lihat Setoran</button>
+          <button class="btn small outline" data-editplan="${p.id}">✎ Edit</button>
+          <button class="btn small outline" data-delplan="${p.id}">Hapus Rencana</button>
+        </div>
+        <div class="contrib-wrap" id="contrib-${p.id}" style="display:none;">
+          <div class="contrib-form">
+            <div>
+              <label>Jumlah Setoran (Rp)</label>
+              <input type="number" min="1" step="1" id="contribAmt-${p.id}" placeholder="0">
+            </div>
+            <div>
+              <label>Tanggal</label>
+              <input type="date" id="contribDate-${p.id}" value="${todayISO()}">
+            </div>
+            <div class="contrib-file-input">
+              <label>Bukti (gambar)</label>
+              <input type="file" accept="image/*" id="contribFile-${p.id}" onchange="document.getElementById('contribPreview-${p.id}').innerHTML=this.files[0]?'<img src='+URL.createObjectURL(this.files[0])+'>':''">
+              <div class="contrib-preview" id="contribPreview-${p.id}"></div>
+            </div>
+            <button class="btn small" data-savecontrib="${p.id}">Simpan</button>
+          </div>
+        </div>
+        <div class="contrib-list-wrap" id="contribList-${p.id}" style="display:none;"></div>
+      </div>`;
+    }).join('');
+
+    grid.querySelectorAll('[data-contrib]').forEach(btn=>{
+      btn.addEventListener('click', ()=>{
+        const wrap = document.getElementById('contrib-'+btn.dataset.contrib);
+        wrap.style.display = wrap.style.display==='none' ? 'block' : 'none';
+      });
+    });
+    grid.querySelectorAll('[data-listcontrib]').forEach(btn=>{
+      btn.addEventListener('click', ()=>{
+        const planId = Number(btn.dataset.listcontrib);
+        const wrap = document.getElementById('contribList-'+planId);
+        if(wrap.style.display==='none'){
+          renderContribList(planId);
+          wrap.style.display='block';
+        } else {
+          wrap.style.display='none';
+        }
+      });
+    });
+    grid.querySelectorAll('[data-savecontrib]').forEach(btn=>{
+      btn.addEventListener('click', async ()=>{
+        const id = Number(btn.dataset.savecontrib);
+        const amtInput = document.getElementById('contribAmt-'+id);
+        const dateInput = document.getElementById('contribDate-'+id);
+        const fileInput = document.getElementById('contribFile-'+id);
+        const amount = Number(amtInput.value) || 0;
+        if(amount<=0){ amtInput.focus(); return; }
+        let evidence = null;
+        if(fileInput && fileInput.files && fileInput.files[0]){
+          const file = fileInput.files[0];
+          if(file.size > 5*1024*1024){ alert('Ukuran gambar maks 5MB.'); return; }
+          evidence = await compressImage(await fileToBase64(file), 800);
+        }
+        const plan = plans.find(p=>p.id===id);
+        const contrib = {
+          id: Date.now(),
+          user_id: currentUser.id,
+          date: dateInput.value || todayISO(),
+          type: 'saving',
+          category: 'Tabungan: ' + plan.name,
+          amount: amount,
+          note: '',
+          plan_id: id,
+          evidence: evidence
+        };
+        try{
+          const { error } = await _supabase.from('transactions').insert(contrib);
+          if(error) throw error;
+          transactions.push({id:contrib.id, date:contrib.date, type:contrib.type, category:contrib.category, amount:contrib.amount, note:contrib.note, planId:contrib.plan_id, evidence:contrib.evidence});
+          renderAll();
+          alert('Setoran berhasil disimpan!');
+        }catch(err){
+          alert('Gagal menyimpan setoran.');
+        }
+      });
+    });
+    grid.querySelectorAll('[data-delplan]').forEach(btn=>{
+      btn.addEventListener('click', async ()=>{
+        const id = Number(btn.dataset.delplan);
+        if(confirm('Hapus rencana ini? Setoran yang sudah tercatat akan tetap ada di riwayat transaksi.')){
+          try{
+            const { error } = await _supabase.from('plans').delete().eq('id', id);
+            if(error) throw error;
+            plans = plans.filter(p=>p.id!==id);
+            renderAll();
+          }catch(err){
+            alert('Gagal menghapus rencana.');
+          }
+        }
+      });
+    });
+    grid.querySelectorAll('[data-editplan]').forEach(btn=>{
+      btn.addEventListener('click', ()=>{
+        const id = Number(btn.dataset.editplan);
+        const plan = plans.find(p=>p.id===id);
+        if(!plan) return;
+        editingPlanId = id;
+        document.getElementById('planName').value = plan.name;
+        document.getElementById('planTarget').value = plan.targetAmount;
+        document.getElementById('planLink').value = plan.purchaseLink || '';
+        const mode = plan.mode;
+        document.querySelector('input[name="planMode"][value="'+mode+'"]').checked = true;
+        document.getElementById('planDateWrap').style.display = mode==='date' ? 'block' : 'none';
+        document.getElementById('planMonthlyWrap').style.display = mode==='monthly' ? 'block' : 'none';
+        if(mode==='date') document.getElementById('planDate').value = plan.targetDate || '';
+        if(mode==='monthly') document.getElementById('planMonthly').value = plan.monthlyFixed || '';
+        document.getElementById('planSubmitBtn').style.display = 'none';
+        document.getElementById('planUpdateBtn').style.display = '';
+        document.getElementById('planCancelBtn').style.display = '';
+        document.getElementById('planForm').scrollIntoView({behavior:'smooth', block:'center'});
+      });
+    });
+  }
+
+  document.getElementById('resetBtn').addEventListener('click', async ()=>{
+    if(confirm('Hapus SEMUA data transaksi dan rencana aset? Tindakan ini tidak bisa dibatalkan.')){
+      try{
+        await _supabase.from('transactions').delete().neq('id', 0);
+        await _supabase.from('plans').delete().neq('id', 0);
+        transactions = [];
+        plans = [];
+        renderAll();
+        alert('Semua data berhasil dihapus.');
+      }catch(err){
+        alert('Gagal mereset data.');
+      }
+    }
+  });
+
+  function renderAll(){
+    renderDashboard();
+    renderTransaksi();
+    renderRencana();
+  }
+
+  checkUser();
+})();
+</script>
+</body>
+</html>
