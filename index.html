@@ -6,6 +6,7 @@
 <title>Kas — Kelola Keuangan &amp; Rencana Aset</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
 <style>
   :root{
     --bg:#f6f5f2;
@@ -22,6 +23,20 @@
     --amber-soft:#f3ead8;
     --radius:10px;
   }
+  [data-theme="dark"]{
+    --bg:#1a1a18;
+    --surface:#2a2a27;
+    --border:#3a3a36;
+    --ink:#e8e6e0;
+    --ink-soft:#a0a096;
+    --ink-faint:#6b6a63;
+    --accent:#6aad6e;
+    --accent-soft:#2a3a2c;
+    --red:#d46a5e;
+    --red-soft:#3a2420;
+    --amber:#d4a65e;
+    --amber-soft:#3a3020;
+  }
   *{box-sizing:border-box;}
   html{scroll-behavior:auto;}
   body{
@@ -36,6 +51,9 @@
     background:rgba(246,245,242,0.92); backdrop-filter:blur(8px);
     border-bottom:1px solid var(--border);
   }
+  [data-theme="dark"] header{
+    background:rgba(26,26,24,0.92);
+  }
   .nav-wrap{
     max-width:920px; margin:0 auto; padding:16px 24px;
     display:flex; align-items:center; justify-content:space-between; gap:16px;
@@ -49,6 +67,13 @@
   }
   nav a:hover{background:var(--accent-soft); color:var(--accent);}
   nav a.active{background:var(--accent); color:#fff;}
+  .theme-toggle{
+    background:var(--surface); border:1px solid var(--border);
+    border-radius:7px; padding:6px 10px; cursor:pointer;
+    font-size:16px; line-height:1; transition:background .15s;
+  }
+  .theme-toggle:hover{background:var(--accent-soft);}
+  [data-theme="dark"] .theme-toggle{color:#fff;}
 
   main{max-width:920px; margin:0 auto; padding:0 24px;}
 
@@ -131,7 +156,7 @@
   }
   form.entry-form .full{grid-column:1/-1;}
   label{font-size:11px; font-weight:600; color:var(--ink-soft); text-transform:uppercase; letter-spacing:0.03em; display:block; margin-bottom:5px;}
-  input, select{width:100%; padding:10px 11px; border:1px solid var(--border); border-radius:7px; background:#fff; font-family:'Inter',sans-serif; font-size:13.5px; color:var(--ink);}
+  input, select{width:100%; padding:10px 11px; border:1px solid var(--border); border-radius:7px; background:var(--surface); font-family:'Inter',sans-serif; font-size:13.5px; color:var(--ink);}
   input:focus, select:focus{outline:2px solid var(--accent); outline-offset:1px; border-color:var(--accent);}
   .btn{font-family:'Space Grotesk',sans-serif; font-weight:600; font-size:13.5px; padding:10px 18px; border-radius:7px; border:none; cursor:pointer; background:var(--ink); color:#fff; transition:opacity .15s;}
   .btn:hover{opacity:0.85;}
@@ -218,6 +243,7 @@
       <a href="#dasbor" class="active">Dasbor</a>
       <a href="#transaksi">Transaksi</a>
       <a href="#rencana">Rencana Aset</a>
+      <button class="theme-toggle" id="themeToggle" title="Ganti tema"><i class="fas fa-sun"></i></button>
     </nav>
   </div>
 </header>
@@ -355,6 +381,22 @@
 
 <script>
 (function(){
+  function getPreferredTheme(){
+    const saved = localStorage.getItem('theme');
+    if(saved) return saved;
+    return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+  }
+  function setTheme(theme){
+    document.documentElement.setAttribute('data-theme', theme);
+    document.getElementById('themeToggle').innerHTML = theme==='dark' ? '<i class="fas fa-sun"></i>' : '<i class="fas fa-moon"></i>';
+    localStorage.setItem('theme', theme);
+  }
+  setTheme(getPreferredTheme());
+  document.getElementById('themeToggle').addEventListener('click', ()=>{
+    const current = document.documentElement.getAttribute('data-theme');
+    setTheme(current==='dark' ? 'light' : 'dark');
+  });
+
   const fmt = new Intl.NumberFormat('id-ID', {style:'currency', currency:'IDR', minimumFractionDigits:0, maximumFractionDigits:0});
   const fmtNum = n => fmt.format(Math.round(n||0));
   const todayISO = () => new Date().toISOString().slice(0,10);
