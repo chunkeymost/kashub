@@ -240,6 +240,17 @@
 
   @media (prefers-reduced-motion: reduce){ *{transition:none !important;} }
 
+  .toast{
+    position:fixed; top:24px; right:24px; z-index:200;
+    background:var(--accent); color:#fff;
+    padding:14px 22px; border-radius:var(--radius);
+    font-size:13.5px; font-weight:600;
+    box-shadow:0 4px 20px rgba(0,0,0,0.15);
+    transform:translateX(120%); transition:transform .3s ease;
+    max-width:360px;
+  }
+  .toast.show{transform:translateX(0);}
+
   /* Auth styles */
   .auth-container{
     max-width:400px; margin:80px auto 0; padding:0 24px;
@@ -460,7 +471,16 @@
 
   const SUPABASE_URL = 'https://nyafwgihwhjzbdgoozwa.supabase.co';
   const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im55YWZ3Z2lod2hqemJkZ29vendhIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODY4MDUwOTIsImV4cCI6MjEwMjM4MTA5Mn0.YJvvCcG5c0hkPvsSLl6-W5WhHIDHxmozD7L0EslWQgA';
-  const _supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+  let _supabase;
+  try {
+    _supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+    console.log('Supabase client initialized successfully');
+  } catch(e) {
+    console.error('Supabase init failed:', e);
+    document.getElementById('authScreen').style.display = '';
+    document.getElementById('authError').textContent = 'Gagal menginisialisasi Supabase. Periksa koneksi internet.';
+    document.getElementById('authError').style.display = '';
+  }
 
   function getPreferredTheme(){
     const saved = localStorage.getItem('theme');
@@ -500,14 +520,34 @@
     return (s||'').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
   }
 
+  function showToast(msg, duration){
+    duration = duration || 3000;
+    const t = document.createElement('div');
+    t.className = 'toast';
+    t.textContent = msg;
+    document.body.appendChild(t);
+    requestAnimationFrame(function(){ t.classList.add('show'); });
+    setTimeout(function(){
+      t.classList.remove('show');
+      setTimeout(function(){ t.remove(); }, 300);
+    }, duration);
+  }
+
   // ========== AUTH ==========
 
   async function checkUser(){
-    const { data: { session } } = await _supabase.auth.getSession();
-    if(session && session.user){
-      currentUser = session.user;
-      showApp();
-    } else {
+    if(!_supabase){ showAuth(); return; }
+    try {
+      const { data: { session }, error } = await _supabase.auth.getSession();
+      if(error){ console.error('getSession error:', error); }
+      if(session && session.user){
+        currentUser = session.user;
+        showApp();
+      } else {
+        showAuth();
+      }
+    } catch(e) {
+      console.error('checkUser failed:', e);
       showAuth();
     }
   }
@@ -551,33 +591,55 @@
 
   document.getElementById('authForm').addEventListener('submit', async (e)=>{
     e.preventDefault();
+    if(!_supabase){
+      document.getElementById('authError').textContent = 'Supabase belum terinisialisasi.';
+      document.getElementById('authError').style.display = '';
+      return;
+    }
     const email = document.getElementById('authEmail').value.trim();
     const password = document.getElementById('authPassword').value;
     const errEl = document.getElementById('authError');
 
+    errEl.style.background = '';
+    errEl.style.color = '';
+
     if(isLoginMode){
-      const { error } = await _supabase.auth.signInWithPassword({ email, password });
+      console.log('Attempting login with:', email);
+      const { data, error } = await _supabase.auth.signInWithPassword({ email, password });
+      console.log('Login result:', { data, error });
       if(error){
         errEl.textContent = error.message === 'Invalid login credentials' ? 'Email atau password salah.' : error.message;
         errEl.style.display = '';
         return;
       }
-      const { data: { session } } = await _supabase.auth.getSession();
-      currentUser = session.user;
+      currentUser = data.user;
       showApp();
     } else {
       const name = document.getElementById('authName').value.trim();
-      const { error } = await _supabase.auth.signUp({ email, password, options: { data: { name } } });
+      console.log('Attempting signup with:', email, name);
+      const { data, error } = await _supabase.auth.signUp({ email, password, options: { data: { name } } });
+      console.log('Signup result:', { data, error });
       if(error){
-        errEl.textContent = error.message;
+        console.log('SIGNUP ERROR:', error.message);
+        errEl.textContent = 'Gagal daftar: ' + error.message;
         errEl.style.display = '';
         return;
       }
-      errEl.textContent = 'Akun berhasil dibuat! Silakan cek email untuk verifikasi, lalu masuk.';
-      errEl.style.display = '';
-      errEl.style.background = 'var(--accent-soft)';
-      errEl.style.color = 'var(--accent)';
-      setTimeout(()=>{ setAuthMode(true); }, 2000);
+      if(data.user && !data.session){
+        console.log('SIGNUP OK - no session, show alert');
+        alert('Akun berhasil dibuat! Silakan cek email untuk verifikasi, lalu masuk.');
+        setAuthMode(true);
+      } else if(data.session){
+        console.log('SIGNUP OK - session exists, auto login');
+        currentUser = data.user;
+        showAuth();
+        showToast('Akun berhasil dibuat! Selamat datang, ' + (data.user.user_metadata && data.user.user_metadata.name ? data.user.user_metadata.name : '') + '!');
+        setTimeout(function(){ showApp(); }, 2000);
+      } else {
+        console.log('SIGNUP - unexpected state:', data);
+        errEl.textContent = 'Terjadi kesalahan tidak terduga.';
+        errEl.style.display = '';
+      }
     }
   });
 
@@ -606,13 +668,15 @@
         .select('id, date, type, category, amount, note, plan_id, evidence')
         .order('date', { ascending: false })
         .order('id', { ascending: false });
+      if(te) console.error('Load transactions error:', te);
       transactions = (!te && Array.isArray(t)) ? t.map(r=>({...r, planId: r.plan_id})) : [];
-    }catch(e){ transactions = []; }
+    }catch(e){ console.error('Load transactions exception:', e); transactions = []; }
     try{
       const { data: p, error: pe } = await _supabase
         .from('plans')
         .select('id, name, target_amount, mode, target_date, monthly_fixed, purchase_link, created_at')
         .order('created_at', { ascending: false });
+      if(pe) console.error('Load plans error:', pe);
       plans = (!pe && Array.isArray(p)) ? p.map(r=>({
         ...r,
         targetAmount: r.target_amount,
@@ -621,7 +685,7 @@
         purchaseLink: r.purchase_link,
         createdAt: r.created_at
       })) : [];
-    }catch(e){ plans = []; }
+    }catch(e){ console.error('Load plans exception:', e); plans = []; }
     renderAll();
   }
 
