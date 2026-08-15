@@ -157,6 +157,8 @@
   .del-evidence-btn{font-size:10px; padding:0 3px; line-height:1;}
   .evidence-modal{position:fixed; inset:0; background:rgba(0,0,0,0.75); display:flex; align-items:center; justify-content:center; z-index:100; cursor:pointer;}
   .evidence-modal img{max-width:90vw; max-height:90vh; border-radius:10px; box-shadow:0 8px 32px rgba(0,0,0,0.4);}
+  .tx-evidence-thumb{width:32px; height:32px; border-radius:5px; object-fit:cover; cursor:pointer; border:1px solid var(--border); vertical-align:middle; margin-left:6px;}
+  .tx-evidence-thumb:hover{opacity:0.8;}
   .contrib-file-input{font-size:12px;}
   .contrib-file-input input[type="file"]{font-size:11px; padding:4px 0;}
   .contrib-preview{margin-top:6px;}
@@ -334,6 +336,11 @@
       <div class="full">
         <label>Catatan (opsional)</label>
         <input type="text" id="txNote" placeholder="Detail tambahan...">
+      </div>
+      <div class="full">
+        <label>Bukti / Evidence (gambar, opsional)</label>
+        <input type="file" accept="image/*" id="txEvidence" onchange="document.getElementById('txEvidencePreview').innerHTML=this.files[0]?'<img src='+URL.createObjectURL(this.files[0])+'>':''">
+        <div class="contrib-preview" id="txEvidencePreview"></div>
       </div>
       <div class="full" style="display:flex; gap:8px; flex-wrap:wrap;">
         <button type="submit" class="btn" id="txSubmitBtn">+ Tambah Transaksi</button>
@@ -662,17 +669,23 @@
     body.innerHTML = recent.length===0
       ? `<tr><td colspan="4" class="empty">Belum ada transaksi untuk periode ini.</td></tr>`
       : recent.map(rowHtml(false)).join('');
+    body.querySelectorAll('[data-showevidence]').forEach(img=>{
+      img.addEventListener('click', ()=>{
+        showEvidenceModal(img.src);
+      });
+    });
   }
 
   function typeLabel(t){ return t==='income' ? 'Pemasukan' : t==='expense' ? 'Pengeluaran' : 'Tabungan'; }
   function rowHtml(withDelete){
     return t => {
       const catNote = t.note ? `${escapeHtml(t.category)} — <span style="color:var(--ink-faint)">${escapeHtml(t.note)}</span>` : escapeHtml(t.category);
+      const evThumb = t.evidence ? `<img class="tx-evidence-thumb" src="${t.evidence}" data-showevidence="${t.id}" title="Lihat bukti">` : '';
       const sign = t.type==='income' ? '+' : '-';
       return `<tr>
         <td data-label="Tanggal">${formatDate(t.date)}</td>
         <td data-label="Jenis"><span class="type-tag ${t.type}">${typeLabel(t.type)}</span></td>
-        <td data-label="Kategori">${catNote}</td>
+        <td data-label="Kategori">${catNote}${evThumb}</td>
         <td data-label="Jumlah" class="amt-col">${sign} ${fmtNum(t.amount)}</td>
         ${withDelete ? `<td class="action-col"><button class="edit-btn" data-edit="${t.id}" title="Edit">✎</button><button class="del-btn" data-del="${t.id}" title="Hapus">✕</button></td>` : ''}
       </tr>`;
@@ -757,10 +770,18 @@
         document.getElementById('txCategory').value = tx.category;
         document.getElementById('txAmount').value = tx.amount;
         document.getElementById('txNote').value = tx.note || '';
+        const prev = document.getElementById('txEvidencePreview');
+        prev.innerHTML = tx.evidence ? `<img src="${tx.evidence}">` : '';
+        document.getElementById('txEvidence').value = '';
         document.getElementById('txSubmitBtn').style.display = 'none';
         document.getElementById('txUpdateBtn').style.display = '';
         document.getElementById('txCancelBtn').style.display = '';
         document.getElementById('txForm').scrollIntoView({behavior:'smooth', block:'center'});
+      });
+    });
+    body.querySelectorAll('[data-showevidence]').forEach(img=>{
+      img.addEventListener('click', ()=>{
+        showEvidenceModal(img.src);
       });
     });
   }
@@ -769,6 +790,7 @@
     editingId = null;
     document.getElementById('txForm').reset();
     document.getElementById('txDate').value = todayISO();
+    document.getElementById('txEvidencePreview').innerHTML = '';
     document.getElementById('txSubmitBtn').style.display = '';
     document.getElementById('txUpdateBtn').style.display = 'none';
     document.getElementById('txCancelBtn').style.display = 'none';
@@ -780,13 +802,23 @@
 
   document.getElementById('txForm').addEventListener('submit', async (e)=>{
     e.preventDefault();
+    const fileInput = document.getElementById('txEvidence');
+    let evidence = null;
     if(editingId){
+      const existing = transactions.find(t=>t.id===editingId);
+      evidence = existing ? existing.evidence || null : null;
+      if(fileInput && fileInput.files && fileInput.files[0]){
+        const file = fileInput.files[0];
+        if(file.size > 5*1024*1024){ alert('Ukuran gambar maks 5MB.'); return; }
+        evidence = await compressImage(await fileToBase64(file), 800);
+      }
       const tx = {
         date: document.getElementById('txDate').value || todayISO(),
         type: document.getElementById('txType').value,
         category: document.getElementById('txCategory').value.trim() || 'Lainnya',
         amount: Number(document.getElementById('txAmount').value) || 0,
-        note: document.getElementById('txNote').value.trim()
+        note: document.getElementById('txNote').value.trim(),
+        evidence: evidence
       };
       if(tx.amount <= 0) return;
       try{
@@ -803,13 +835,19 @@
         alert('Gagal mengupdate transaksi.');
       }
     } else {
+      if(fileInput && fileInput.files && fileInput.files[0]){
+        const file = fileInput.files[0];
+        if(file.size > 5*1024*1024){ alert('Ukuran gambar maks 5MB.'); return; }
+        evidence = await compressImage(await fileToBase64(file), 800);
+      }
       const tx = {
         id: Date.now(),
         date: document.getElementById('txDate').value || todayISO(),
         type: document.getElementById('txType').value,
         category: document.getElementById('txCategory').value.trim() || 'Lainnya',
         amount: Number(document.getElementById('txAmount').value) || 0,
-        note: document.getElementById('txNote').value.trim()
+        note: document.getElementById('txNote').value.trim(),
+        evidence: evidence
       };
       if(tx.amount <= 0) return;
       try{
