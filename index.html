@@ -94,6 +94,34 @@
   .type-tag.saving{background:var(--amber-soft); color:var(--amber);}
   .del-btn{background:none; border:none; color:var(--ink-faint); cursor:pointer; font-size:16px; line-height:1; padding:2px 6px;}
   .del-btn:hover{color:var(--red);}
+  .edit-btn{background:none; border:none; color:var(--ink-faint); cursor:pointer; font-size:15px; line-height:1; padding:2px 6px;}
+  .edit-btn:hover{color:var(--accent);}
+  .edit-plan-btn{background:none; border:none; color:var(--ink-faint); cursor:pointer; font-size:15px; line-height:1; padding:2px 6px;}
+  .edit-plan-btn:hover{color:var(--accent);}
+  .plan-link{font-size:12.5px; margin-top:8px;}
+  .plan-link a{color:var(--accent); text-decoration:none;}
+  .plan-link a:hover{text-decoration:underline;}
+  .contrib-list{margin-top:14px; background:var(--bg); border:1px solid var(--border); border-radius:var(--radius); overflow:hidden;}
+  .contrib-list-head{padding:10px 14px; font-size:12px; font-weight:600; color:var(--ink-soft); border-bottom:1px solid var(--border); background:var(--surface);}
+  .contrib-item{display:flex; align-items:center; justify-content:space-between; padding:10px 14px; border-bottom:1px solid var(--border); font-size:13px; gap:10px;}
+  .contrib-item:last-child{border-bottom:none;}
+  .contrib-date{color:var(--ink-soft); white-space:nowrap;}
+  .contrib-amt{font-family:'JetBrains Mono',monospace; font-weight:600;}
+  .contrib-actions{display:flex; gap:2px; flex-shrink:0;}
+  .contrib-empty{padding:16px 14px; color:var(--ink-faint); font-size:12.5px; font-style:italic; text-align:center;}
+  .contrib-edit-row{display:flex; gap:8px; align-items:flex-end; padding:10px 14px; background:var(--surface); border-bottom:1px solid var(--border); flex-wrap:wrap;}
+  .contrib-edit-row div{flex:1; min-width:100px;}
+  .contrib-edit-row input{width:100%; padding:8px 10px; border:1px solid var(--border); border-radius:7px; font-size:13px;}
+  .contrib-thumb{width:36px; height:36px; border-radius:6px; object-fit:cover; cursor:pointer; border:1px solid var(--border); vertical-align:middle;}
+  .contrib-thumb:hover{opacity:0.8;}
+  .contrib-evidence{display:flex; align-items:center; gap:2px;}
+  .del-evidence-btn{font-size:10px; padding:0 3px; line-height:1;}
+  .evidence-modal{position:fixed; inset:0; background:rgba(0,0,0,0.75); display:flex; align-items:center; justify-content:center; z-index:100; cursor:pointer;}
+  .evidence-modal img{max-width:90vw; max-height:90vh; border-radius:10px; box-shadow:0 8px 32px rgba(0,0,0,0.4);}
+  .contrib-file-input{font-size:12px;}
+  .contrib-file-input input[type="file"]{font-size:11px; padding:4px 0;}
+  .contrib-preview{margin-top:6px;}
+  .contrib-preview img{max-width:80px; max-height:80px; border-radius:6px; border:1px solid var(--border); object-fit:cover;}
   .empty{color:var(--ink-faint); font-size:13px; padding:20px 4px; font-style:italic; text-align:center;}
 
   form.entry-form{
@@ -141,7 +169,43 @@
     .cards{grid-template-columns:repeat(2,1fr);}
     form.entry-form{grid-template-columns:1fr 1fr;}
     .hero{padding:36px 0 24px;}
+
+    /* Table to card layout */
+    .ledger thead{display:none;}
+    .ledger tbody{display:flex; flex-direction:column; gap:10px;}
+    .ledger tr{
+      display:block; background:var(--surface);
+      border:1px solid var(--border); border-radius:var(--radius);
+      padding:14px 16px;
+    }
+    .ledger td{
+      display:flex; justify-content:space-between; align-items:center;
+      padding:5px 0; border-bottom:none;
+    }
+    .ledger td::before{
+      content:attr(data-label); font-size:11px; font-weight:600;
+      color:var(--ink-faint); text-transform:uppercase; letter-spacing:0.03em;
+    }
+    .ledger td.amt-col{justify-content:flex-end;}
+    .ledger td.action-col{justify-content:flex-end; border-bottom:none;}
+
+    /* Bar chart */
+    .bar-row{grid-template-columns:70px 1fr 80px; gap:8px;}
+
+    /* Plan cards */
+    .plan-card{padding:16px;}
+    .plan-meta{flex-direction:column; gap:4px;}
+    .contrib-form div{min-width:100%;}
   }
+
+  @media (max-width:400px){
+    .cards{grid-template-columns:1fr;}
+    form.entry-form{grid-template-columns:1fr;}
+    .hero h1{font-size:24px;}
+    main{padding:0 16px;}
+    .bar-row{grid-template-columns:60px 1fr 70px;}
+  }
+
   @media (prefers-reduced-motion: reduce){ *{transition:none !important;} }
 </style>
 </head>
@@ -219,14 +283,16 @@
       </div>
       <div>
         <label>Jumlah (Rp)</label>
-        <input type="number" id="txAmount" min="0" step="1000" required placeholder="0">
+        <input type="number" id="txAmount" min="0" step="1" required placeholder="0">
       </div>
       <div class="full">
         <label>Catatan (opsional)</label>
         <input type="text" id="txNote" placeholder="Detail tambahan...">
       </div>
-      <div class="full">
-        <button type="submit" class="btn">+ Tambah Transaksi</button>
+      <div class="full" style="display:flex; gap:8px; flex-wrap:wrap;">
+        <button type="submit" class="btn" id="txSubmitBtn">+ Tambah Transaksi</button>
+        <button type="submit" class="btn" id="txUpdateBtn" style="display:none;">Update Transaksi</button>
+        <button type="button" class="btn outline" id="txCancelBtn" style="display:none;">Batal</button>
       </div>
     </form>
 
@@ -255,7 +321,7 @@
       </div>
       <div>
         <label>Harga Target (Rp)</label>
-        <input type="number" id="planTarget" min="1" step="10000" required placeholder="0">
+        <input type="number" id="planTarget" min="1" step="1" required placeholder="0">
       </div>
       <div class="full">
         <div class="radio-row">
@@ -269,10 +335,16 @@
       </div>
       <div id="planMonthlyWrap" style="display:none">
         <label>Cicilan per Bulan (Rp)</label>
-        <input type="number" id="planMonthly" min="0" step="10000" placeholder="0">
+        <input type="number" id="planMonthly" min="0" step="1" placeholder="0">
       </div>
       <div class="full">
-        <button type="submit" class="btn">+ Buat Rencana</button>
+        <label>Link Pembelian (opsional)</label>
+        <input type="url" id="planLink" placeholder="https://...">
+      </div>
+      <div class="full" style="display:flex; gap:8px; flex-wrap:wrap;">
+        <button type="submit" class="btn" id="planSubmitBtn">+ Buat Rencana</button>
+        <button type="submit" class="btn" id="planUpdateBtn" style="display:none;">Update Rencana</button>
+        <button type="button" class="btn outline" id="planCancelBtn" style="display:none;">Batal</button>
       </div>
     </form>
 
@@ -290,6 +362,8 @@
   let transactions = [];
   let plans = [];
   let currentFilter = 'all';
+  let editingId = null;
+  let editingPlanId = null;
 
   const API = '';
 
@@ -350,6 +424,126 @@
   function savedForPlan(planId){
     return transactions.filter(t=>t.type==='saving' && t.planId===planId).reduce((s,t)=>s+t.amount,0);
   }
+  function getContributions(planId){
+    return transactions.filter(t=>t.type==='saving' && t.planId===planId)
+      .sort((a,b)=> b.date.localeCompare(a.date) || b.id - a.id);
+  }
+  function renderContribList(planId){
+    const wrap = document.getElementById('contribList-'+planId);
+    if(!wrap) return;
+    const contribs = getContributions(planId);
+    if(contribs.length===0){
+      wrap.innerHTML = `<div class="contrib-list"><div class="contrib-empty">Belum ada setoran.</div></div>`;
+      return;
+    }
+    const total = contribs.reduce((s,t)=>s+t.amount,0);
+    wrap.innerHTML = `
+    <div class="contrib-list">
+      <div class="contrib-list-head">${contribs.length} setoran &middot; Total: ${fmtNum(total)}</div>
+      ${contribs.map(c=>`
+        <div class="contrib-item" id="contribItem-${c.id}">
+          <span class="contrib-date">📅 ${formatDate(c.date)}</span>
+          <span class="contrib-amt">${fmtNum(c.amount)}</span>
+          ${c.evidence ? `<span class="contrib-evidence"><img class="contrib-thumb" src="${c.evidence}" data-showevidence="${c.id}" title="Lihat bukti"><button class="del-btn del-evidence-btn" data-delevidence="${c.id}" title="Hapus bukti">✕</button></span>` : ''}
+          <span class="contrib-actions">
+            <button class="edit-btn" data-editcontrib="${c.id}" title="Edit">✎</button>
+            <button class="del-btn" data-delcontrib="${c.id}" title="Hapus">✕</button>
+          </span>
+        </div>
+      `).join('')}
+    </div>`;
+    wrap.querySelectorAll('[data-showevidence]').forEach(img=>{
+      img.addEventListener('click', ()=>{
+        showEvidenceModal(img.src);
+      });
+    });
+    wrap.querySelectorAll('[data-delevidence]').forEach(btn=>{
+      btn.addEventListener('click', async ()=>{
+        const id = Number(btn.dataset.delevidence);
+        if(!confirm('Hapus bukti gambar ini?')) return;
+        try{
+          const res = await fetch(API+'/api/transactions/'+id, {
+            method:'PUT', headers:{'Content-Type':'application/json'},
+            body:JSON.stringify({date:transactions.find(t=>t.id===id).date, type:'saving', category:transactions.find(t=>t.id===id).category, amount:transactions.find(t=>t.id===id).amount, note:transactions.find(t=>t.id===id).note||'', evidence:null})
+          });
+          if(!res.ok) throw new Error('Server error');
+          const idx = transactions.findIndex(t=>t.id===id);
+          if(idx>=0) transactions[idx].evidence = null;
+          renderContribList(planId);
+        }catch(err){ alert('Gagal menghapus bukti.'); }
+      });
+    });
+    wrap.querySelectorAll('[data-editcontrib]').forEach(btn=>{
+      btn.addEventListener('click', ()=>{
+        const id = Number(btn.dataset.editcontrib);
+        const tx = transactions.find(t=>t.id===id);
+        if(!tx) return;
+        const item = document.getElementById('contribItem-'+id);
+        item.outerHTML = `
+        <div class="contrib-edit-row" id="contribItem-${id}">
+          <div>
+            <label style="font-size:10px; font-weight:600; color:var(--ink-faint); text-transform:uppercase; letter-spacing:0.03em;">Tanggal</label>
+            <input type="date" id="editContribDate-${id}" value="${tx.date}">
+          </div>
+          <div>
+            <label style="font-size:10px; font-weight:600; color:var(--ink-faint); text-transform:uppercase; letter-spacing:0.03em;">Jumlah (Rp)</label>
+            <input type="number" min="1" step="1" id="editContribAmt-${id}" value="${tx.amount}">
+          </div>
+          <div class="contrib-file-input">
+            <label style="font-size:10px; font-weight:600; color:var(--ink-faint); text-transform:uppercase; letter-spacing:0.03em;">Bukti</label>
+            ${tx.evidence ? `<div class="contrib-preview"><img src="${tx.evidence}"></div>` : ''}
+            <input type="file" accept="image/*" id="editContribFile-${id}">
+          </div>
+          <div style="display:flex; gap:6px; padding-top:18px;">
+            <button class="btn small" data-saveeditcontrib="${id}">Simpan</button>
+            <button class="btn small outline" datacanceleditcontrib="${id}">Batal</button>
+          </div>
+        </div>`;
+        wrap.querySelectorAll('[data-saveeditcontrib="'+id+'"]').forEach(b=>{
+          b.addEventListener('click', async ()=>{
+            const newDate = document.getElementById('editContribDate-'+id).value;
+            const newAmt = Number(document.getElementById('editContribAmt-'+id).value) || 0;
+            if(newAmt<=0) return;
+            let newEvidence = tx.evidence || null;
+            const fileInput = document.getElementById('editContribFile-'+id);
+            if(fileInput && fileInput.files && fileInput.files[0]){
+              const file = fileInput.files[0];
+              if(file.size > 5*1024*1024){ alert('Ukuran gambar maks 5MB.'); return; }
+              let b64 = await fileToBase64(file);
+              b64 = await compressImage(b64, 800);
+              newEvidence = b64;
+            }
+            try{
+              const res = await fetch(API+'/api/transactions/'+id, {
+                method:'PUT', headers:{'Content-Type':'application/json'},
+                body:JSON.stringify({date:newDate, type:'saving', category:tx.category, amount:newAmt, note:tx.note||'', evidence:newEvidence})
+              });
+              if(!res.ok) throw new Error('Server error');
+              const idx = transactions.findIndex(t=>t.id===id);
+              if(idx>=0){ transactions[idx].date=newDate; transactions[idx].amount=newAmt; transactions[idx].evidence=newEvidence; }
+              renderContribList(planId);
+              renderDashboard();
+            }catch(err){ alert('Gagal mengupdate setoran.'); }
+          });
+        });
+        wrap.querySelectorAll('[datacanceleditcontrib="'+id+'"]').forEach(b=>{
+          b.addEventListener('click', ()=>{ renderContribList(planId); });
+        });
+      });
+    });
+    wrap.querySelectorAll('[data-delcontrib]').forEach(btn=>{
+      btn.addEventListener('click', async ()=>{
+        const id = Number(btn.dataset.delcontrib);
+        if(!confirm('Hapus setoran ini?')) return;
+        try{
+          await apiDel('/api/transactions/'+id);
+          transactions = transactions.filter(t=>t.id!==id);
+          renderContribList(planId);
+          renderDashboard();
+        }catch(err){ alert('Gagal menghapus setoran.'); }
+      });
+    });
+  }
 
   function renderDashboard(){
     const {income, expense, saving, balance} = totals();
@@ -388,11 +582,11 @@
       const catNote = t.note ? `${escapeHtml(t.category)} — <span style="color:var(--ink-faint)">${escapeHtml(t.note)}</span>` : escapeHtml(t.category);
       const sign = t.type==='income' ? '+' : '-';
       return `<tr>
-        <td>${formatDate(t.date)}</td>
-        <td><span class="type-tag ${t.type}">${typeLabel(t.type)}</span></td>
-        <td>${catNote}</td>
-        <td class="amt-col">${sign} ${fmtNum(t.amount)}</td>
-        ${withDelete ? `<td><button class="del-btn" data-del="${t.id}" title="Hapus">✕</button></td>` : ''}
+        <td data-label="Tanggal">${formatDate(t.date)}</td>
+        <td data-label="Jenis"><span class="type-tag ${t.type}">${typeLabel(t.type)}</span></td>
+        <td data-label="Kategori">${catNote}</td>
+        <td data-label="Jumlah" class="amt-col">${sign} ${fmtNum(t.amount)}</td>
+        ${withDelete ? `<td class="action-col"><button class="edit-btn" data-edit="${t.id}" title="Edit">✎</button><button class="del-btn" data-del="${t.id}" title="Hapus">✕</button></td>` : ''}
       </tr>`;
     };
   }
@@ -401,6 +595,37 @@
   }
   function escapeHtml(s){
     return (s||'').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+  }
+  function fileToBase64(file){
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(reader.result);
+      reader.onerror = reject;
+      reader.readAsDataURL(file);
+    });
+  }
+  function compressImage(base64, maxWidth){
+    return new Promise((resolve) => {
+      const img = new Image();
+      img.onload = () => {
+        let w = img.width, h = img.height;
+        if(w > maxWidth){ h = Math.round(h * maxWidth / w); w = maxWidth; }
+        const canvas = document.createElement('canvas');
+        canvas.width = w; canvas.height = h;
+        canvas.getContext('2d').drawImage(img, 0, 0, w, h);
+        resolve(canvas.toDataURL('image/jpeg', 0.8));
+      };
+      img.src = base64;
+    });
+  }
+  function showEvidenceModal(src){
+    const modal = document.createElement('div');
+    modal.className = 'evidence-modal';
+    modal.innerHTML = `<img src="${src}">`;
+    modal.addEventListener('click', ()=> modal.remove());
+    const escHandler = (e)=>{ if(e.key==='Escape'){ modal.remove(); document.removeEventListener('keydown', escHandler); }};
+    document.addEventListener('keydown', escHandler);
+    document.body.appendChild(modal);
   }
 
   document.querySelectorAll('.chip').forEach(chip=>{
@@ -433,28 +658,82 @@
         }
       });
     });
+    body.querySelectorAll('[data-edit]').forEach(btn=>{
+      btn.addEventListener('click', ()=>{
+        const id = Number(btn.dataset.edit);
+        const tx = transactions.find(t=>t.id===id);
+        if(!tx) return;
+        editingId = id;
+        document.getElementById('txDate').value = tx.date;
+        document.getElementById('txType').value = tx.type;
+        document.getElementById('txCategory').value = tx.category;
+        document.getElementById('txAmount').value = tx.amount;
+        document.getElementById('txNote').value = tx.note || '';
+        document.getElementById('txSubmitBtn').style.display = 'none';
+        document.getElementById('txUpdateBtn').style.display = '';
+        document.getElementById('txCancelBtn').style.display = '';
+        document.getElementById('txForm').scrollIntoView({behavior:'smooth', block:'center'});
+      });
+    });
   }
+
+  function resetFormMode(){
+    editingId = null;
+    document.getElementById('txForm').reset();
+    document.getElementById('txDate').value = todayISO();
+    document.getElementById('txSubmitBtn').style.display = '';
+    document.getElementById('txUpdateBtn').style.display = 'none';
+    document.getElementById('txCancelBtn').style.display = 'none';
+  }
+
+  document.getElementById('txCancelBtn').addEventListener('click', ()=>{
+    resetFormMode();
+  });
 
   document.getElementById('txForm').addEventListener('submit', async (e)=>{
     e.preventDefault();
-    const tx = {
-      id: Date.now(),
-      date: document.getElementById('txDate').value || todayISO(),
-      type: document.getElementById('txType').value,
-      category: document.getElementById('txCategory').value.trim() || 'Lainnya',
-      amount: Number(document.getElementById('txAmount').value) || 0,
-      note: document.getElementById('txNote').value.trim()
-    };
-    if(tx.amount <= 0) return;
-    try{
-      await apiPost('/api/transactions', tx);
-      transactions.push(tx);
-      e.target.reset();
-      document.getElementById('txDate').value = todayISO();
-      renderAll();
-      alert('Transaksi berhasil disimpan!');
-    }catch(err){
-      alert('Gagal menyimpan transaksi. Pastikan server berjalan.');
+    if(editingId){
+      const tx = {
+        date: document.getElementById('txDate').value || todayISO(),
+        type: document.getElementById('txType').value,
+        category: document.getElementById('txCategory').value.trim() || 'Lainnya',
+        amount: Number(document.getElementById('txAmount').value) || 0,
+        note: document.getElementById('txNote').value.trim()
+      };
+      if(tx.amount <= 0) return;
+      try{
+        const res = await fetch(API+'/api/transactions/'+editingId, {
+          method:'PUT', headers:{'Content-Type':'application/json'}, body:JSON.stringify(tx)
+        });
+        if(!res.ok) throw new Error('Server error');
+        const idx = transactions.findIndex(t=>t.id===editingId);
+        if(idx>=0) transactions[idx] = {...transactions[idx], ...tx};
+        resetFormMode();
+        renderAll();
+        alert('Transaksi berhasil diupdate!');
+      }catch(err){
+        alert('Gagal mengupdate transaksi.');
+      }
+    } else {
+      const tx = {
+        id: Date.now(),
+        date: document.getElementById('txDate').value || todayISO(),
+        type: document.getElementById('txType').value,
+        category: document.getElementById('txCategory').value.trim() || 'Lainnya',
+        amount: Number(document.getElementById('txAmount').value) || 0,
+        note: document.getElementById('txNote').value.trim()
+      };
+      if(tx.amount <= 0) return;
+      try{
+        await apiPost('/api/transactions', tx);
+        transactions.push(tx);
+        e.target.reset();
+        document.getElementById('txDate').value = todayISO();
+        renderAll();
+        alert('Transaksi berhasil disimpan!');
+      }catch(err){
+        alert('Gagal menyimpan transaksi. Pastikan server berjalan.');
+      }
     }
   });
 
@@ -466,31 +745,62 @@
     });
   });
 
+  function resetPlanFormMode(){
+    editingPlanId = null;
+    document.getElementById('planForm').reset();
+    document.getElementById('planDateWrap').style.display='block';
+    document.getElementById('planMonthlyWrap').style.display='none';
+    document.getElementById('planSubmitBtn').style.display = '';
+    document.getElementById('planUpdateBtn').style.display = 'none';
+    document.getElementById('planCancelBtn').style.display = 'none';
+  }
+
+  document.getElementById('planCancelBtn').addEventListener('click', ()=>{
+    resetPlanFormMode();
+  });
+
   document.getElementById('planForm').addEventListener('submit', async (e)=>{
     e.preventDefault();
     const mode = document.querySelector('input[name="planMode"]:checked').value;
-    const plan = {
-      id: Date.now(),
+    const planData = {
       name: document.getElementById('planName').value.trim(),
       targetAmount: Number(document.getElementById('planTarget').value) || 0,
       mode: mode,
       targetDate: mode==='date' ? document.getElementById('planDate').value : '',
       monthlyFixed: mode==='monthly' ? Number(document.getElementById('planMonthly').value)||0 : 0,
-      createdAt: todayISO()
+      purchaseLink: document.getElementById('planLink').value.trim()
     };
-    if(!plan.name || plan.targetAmount<=0) return;
-    if(plan.mode==='date' && !plan.targetDate) return;
-    if(plan.mode==='monthly' && plan.monthlyFixed<=0) return;
-    try{
-      await apiPost('/api/plans', plan);
-      plans.push(plan);
-      e.target.reset();
-      document.getElementById('planDateWrap').style.display='block';
-      document.getElementById('planMonthlyWrap').style.display='none';
-      renderAll();
-      alert('Rencana aset berhasil dibuat!');
-    }catch(err){
-      alert('Gagal menyimpan rencana. Pastikan server berjalan.');
+    if(!planData.name || planData.targetAmount<=0) return;
+    if(planData.mode==='date' && !planData.targetDate) return;
+    if(planData.mode==='monthly' && planData.monthlyFixed<=0) return;
+
+    if(editingPlanId){
+      try{
+        const res = await fetch(API+'/api/plans/'+editingPlanId, {
+          method:'PUT', headers:{'Content-Type':'application/json'}, body:JSON.stringify(planData)
+        });
+        if(!res.ok) throw new Error('Server error');
+        const idx = plans.findIndex(p=>p.id===editingPlanId);
+        if(idx>=0) plans[idx] = {...plans[idx], ...planData};
+        resetPlanFormMode();
+        renderAll();
+        alert('Rencana berhasil diupdate!');
+      }catch(err){
+        alert('Gagal mengupdate rencana.');
+      }
+    } else {
+      const plan = { id: Date.now(), ...planData, createdAt: todayISO() };
+      try{
+        await apiPost('/api/plans', plan);
+        plans.push(plan);
+        e.target.reset();
+        document.getElementById('planDateWrap').style.display='block';
+        document.getElementById('planMonthlyWrap').style.display='none';
+        renderAll();
+        alert('Rencana aset berhasil dibuat!');
+      }catch(err){
+        alert('Gagal menyimpan rencana. Pastikan server berjalan.');
+      }
     }
   });
 
@@ -539,23 +849,32 @@
           <span>${done ? 'Target tercapai' : fmtNum(remaining)+' lagi'}</span>
         </div>
         ${!done ? `<div class="plan-note">${cicilanText}</div>` : ''}
+        ${p.purchaseLink ? `<div class="plan-link">🔗 <a href="${escapeHtml(p.purchaseLink)}" target="_blank">Lihat Produk</a></div>` : ''}
         <div class="plan-actions">
           ${!done ? `<button class="btn small" data-contrib="${p.id}">+ Tambah Setoran</button>` : ''}
+          <button class="btn small outline" data-listcontrib="${p.id}">Lihat Setoran</button>
+          <button class="btn small outline" data-editplan="${p.id}">✎ Edit</button>
           <button class="btn small outline" data-delplan="${p.id}">Hapus Rencana</button>
         </div>
         <div class="contrib-wrap" id="contrib-${p.id}" style="display:none;">
           <div class="contrib-form">
             <div>
               <label>Jumlah Setoran (Rp)</label>
-              <input type="number" min="1" step="1000" id="contribAmt-${p.id}" placeholder="0">
+              <input type="number" min="1" step="1" id="contribAmt-${p.id}" placeholder="0">
             </div>
             <div>
               <label>Tanggal</label>
               <input type="date" id="contribDate-${p.id}" value="${todayISO()}">
             </div>
+            <div class="contrib-file-input">
+              <label>Bukti (gambar)</label>
+              <input type="file" accept="image/*" id="contribFile-${p.id}" onchange="document.getElementById('contribPreview-${p.id}').innerHTML=this.files[0]?'<img src='+URL.createObjectURL(this.files[0])+'>':''">
+              <div class="contrib-preview" id="contribPreview-${p.id}"></div>
+            </div>
             <button class="btn small" data-savecontrib="${p.id}">Simpan</button>
           </div>
         </div>
+        <div class="contrib-list-wrap" id="contribList-${p.id}" style="display:none;"></div>
       </div>`;
     }).join('');
 
@@ -565,19 +884,39 @@
         wrap.style.display = wrap.style.display==='none' ? 'block' : 'none';
       });
     });
+    grid.querySelectorAll('[data-listcontrib]').forEach(btn=>{
+      btn.addEventListener('click', ()=>{
+        const planId = Number(btn.dataset.listcontrib);
+        const wrap = document.getElementById('contribList-'+planId);
+        if(wrap.style.display==='none'){
+          renderContribList(planId);
+          wrap.style.display='block';
+        } else {
+          wrap.style.display='none';
+        }
+      });
+    });
     grid.querySelectorAll('[data-savecontrib]').forEach(btn=>{
       btn.addEventListener('click', async ()=>{
         const id = Number(btn.dataset.savecontrib);
         const amtInput = document.getElementById('contribAmt-'+id);
         const dateInput = document.getElementById('contribDate-'+id);
+        const fileInput = document.getElementById('contribFile-'+id);
         const amount = Number(amtInput.value) || 0;
         if(amount<=0){ amtInput.focus(); return; }
+        let evidence = null;
+        if(fileInput && fileInput.files && fileInput.files[0]){
+          const file = fileInput.files[0];
+          if(file.size > 5*1024*1024){ alert('Ukuran gambar maks 5MB.'); return; }
+          evidence = await compressImage(await fileToBase64(file), 800);
+        }
         const plan = plans.find(p=>p.id===id);
         const contrib = {
           id: Date.now(),
           date: dateInput.value || todayISO(),
           amount: amount,
-          planName: plan.name
+          planName: plan.name,
+          evidence: evidence
         };
         try{
           await apiPost('/api/plans/'+id+'/contrib', contrib);
@@ -588,7 +927,8 @@
             category: 'Tabungan: ' + plan.name,
             amount: amount,
             note: '',
-            planId: id
+            planId: id,
+            evidence: evidence
           });
           renderAll();
           alert('Setoran berhasil disimpan!');
@@ -609,6 +949,27 @@
             alert('Gagal menghapus rencana.');
           }
         }
+      });
+    });
+    grid.querySelectorAll('[data-editplan]').forEach(btn=>{
+      btn.addEventListener('click', ()=>{
+        const id = Number(btn.dataset.editplan);
+        const plan = plans.find(p=>p.id===id);
+        if(!plan) return;
+        editingPlanId = id;
+        document.getElementById('planName').value = plan.name;
+        document.getElementById('planTarget').value = plan.targetAmount;
+        document.getElementById('planLink').value = plan.purchaseLink || '';
+        const mode = plan.mode;
+        document.querySelector('input[name="planMode"][value="'+mode+'"]').checked = true;
+        document.getElementById('planDateWrap').style.display = mode==='date' ? 'block' : 'none';
+        document.getElementById('planMonthlyWrap').style.display = mode==='monthly' ? 'block' : 'none';
+        if(mode==='date') document.getElementById('planDate').value = plan.targetDate;
+        if(mode==='monthly') document.getElementById('planMonthly').value = plan.monthlyFixed;
+        document.getElementById('planSubmitBtn').style.display = 'none';
+        document.getElementById('planUpdateBtn').style.display = '';
+        document.getElementById('planCancelBtn').style.display = '';
+        document.getElementById('planForm').scrollIntoView({behavior:'smooth', block:'center'});
       });
     });
   }

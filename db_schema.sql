@@ -9,6 +9,7 @@ CREATE TABLE IF NOT EXISTS transactions (
   amount INT NOT NULL,
   note TEXT DEFAULT NULL,
   plan_id BIGINT DEFAULT NULL,
+  evidence MEDIUMTEXT DEFAULT NULL,
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
@@ -19,5 +20,6 @@ CREATE TABLE IF NOT EXISTS plans (
   mode ENUM('date','monthly') NOT NULL,
   target_date DATE DEFAULT NULL,
   monthly_fixed INT DEFAULT 0,
+  purchase_link VARCHAR(500) DEFAULT NULL,
   created_at DATE NOT NULL
 );
