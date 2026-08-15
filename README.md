@@ -7,7 +7,7 @@ Aplikasi pencatatan keuangan harian dengan fitur perencanaan cicilan aset. Data 
 - **Backend:** Node.js + Express.js
 - **Database:** MySQL (via `mysql2` driver)
 - **Frontend:** HTML, CSS, JavaScript (vanilla)
-- **Dependencies:** `express`, `mysql2`, `cors`
+- **Dependencies:** `express`, `mysql2`, `cors`, `helmet`, `express-rate-limit`, `dotenv`
 
 ## Prerequisites
 
@@ -23,10 +23,16 @@ cd kasku
 # 2. Install dependencies
 npm install
 
-# 3. Import database schema
+# 3. Copy environment variables template
+cp .env.example .env
+
+# 4. Edit .env dengan credential Anda
+# (lihat Environment Variables di bawah)
+
+# 5. Import database schema
 mysql -u root -p < db_schema.sql
 
-# 4. Jalankan server
+# 6. Jalankan server
 npm start
 ```
 
@@ -34,14 +40,24 @@ Server akan berjalan di **http://localhost:3000**
 
 > **Note:** Body limit diatur ke 10mb untuk mendukung upload gambar base64 sebagai bukti setoran.
 
-## Database Setup
+## Environment Variables
 
-| Parameter | Value |
-|-----------|-------|
-| Host | `127.0.0.1` |
-| Port | `3306` |
-| User | `root` |
-| Database | `db_kas` |
+Buat file `.env` dari template `.env.example` dan isi dengan credential Anda:
+
+| Variable | Keterangan | Contoh |
+|----------|------------|--------|
+| `DB_HOST` | Host MySQL | `127.0.0.1` |
+| `DB_PORT` | Port MySQL | `3306` |
+| `DB_USER` | Username MySQL | `root` |
+| `DB_PASSWORD` | Password MySQL | `your_password` |
+| `DB>Nama` | Nama database | `db_kas` |
+| `SUPABASE_URL` | URL Supabase (untuk Vercel) | `https://xxx.supabase.co` |
+| `SUPABASE_ANON_KEY` | Anon key Supabase | `eyJhbGci...` |
+| `RESET_TOKEN` | Token untuk reset endpoint | `your-secret-token` |
+
+> **Penting:** Jangan commit file `.env` ke repository. File `.env` sudah ada di `.gitignore`.
+
+## Database Setup
 
 ### Tabel
 
@@ -184,6 +200,8 @@ kasku/
 ├── server.js           # Express server + API routes
 ├── db.js               # MySQL connection pool
 ├── db_schema.sql       # Database schema
+├── .env.example        # Environment variables template
+├── .env                # Environment variables (gitignored)
 ├── package.json        # Dependencies
 ├── node_modules/       # Installed packages
 └── README.md           # Dokumentasi ini

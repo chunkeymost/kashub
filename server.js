@@ -1,12 +1,36 @@
 const express = require('express');
 const cors = require('cors');
+const helmet = require('helmet');
+const rateLimit = require('express-rate-limit');
 const pool = require('./db');
 const path = require('path');
 
 const app = express();
 const PORT = 3000;
 
-app.use(cors());
+// Security middleware
+app.use(helmet());
+app.use(cors({
+  origin: process.env.ALLOWED_ORIGINS ? process.env.ALLOWED_ORIGINS.split(',') : '*',
+  methods: ['GET', 'POST', 'PUT', 'DELETE'],
+  allowedHeaders: ['Content-Type']
+}));
+
+// Rate limiting
+const limiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 100, // limit each IP to 100 requests per windowMs
+  message: 'Terlalu banyak request, coba lagi nanti'
+});
+app.use('/api/', limiter);
+
+// Stricter rate limit for destructive endpoints
+const strictLimiter = rateLimit({
+  windowMs: 60 * 60 * 1000, // 1 hour
+  max: 5, // limit each IP to 5 requests per hour
+  message: 'Terlalu banyak request reset, coba lagi nanti'
+});
+
 app.use(express.json({ limit: '10mb' }));
 app.use(express.static(path.join(__dirname)));
 
@@ -133,7 +157,15 @@ app.post('/api/plans/:id/contrib', async (req, res) => {
 
 // ========== RESET ==========
 
-app.delete('/api/reset', async (req, res) => {
+// Simple token-based auth for destructive endpoints
+const RESET_TOKEN = process.env.RESET_TOKEN || 'kasku-reset-token-change-me';
+
+app.delete('/api/reset', strictLimiter, async (req, res) => {
+  const authHeader = req.headers.authorization;
+  if (!authHeader || authHeader !== `Bearer ${RESET_TOKEN}`) {
+    return res.status(401).json({ error: 'Unauthorized' });
+  }
+
   try {
     await pool.query('DELETE FROM transactions');
     await pool.query('DELETE FROM plans');

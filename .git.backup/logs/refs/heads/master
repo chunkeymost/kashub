@@ -1,0 +1,15 @@
+0000000000000000000000000000000000000000 fc0f93eb2d406c70e37275e6116976fba169b532 neangansarang <neangansarangkamarang@gmail.com> 1786702558 +0700	commit (initial): first commit proyek kasku
+fc0f93eb2d406c70e37275e6116976fba169b532 c69818515049d7868aba28e70782160b52e89137 neangansarang <neangansarangkamarang@gmail.com> 1786802407 +0700	commit: feat: tambahkan backend yang menyimpan semua transaksi ke database mysql
+c69818515049d7868aba28e70782160b52e89137 6cc07e6f1aa03025b3087082bdf25724c9a004ed neangansarang <neangansarangkamarang@gmail.com> 1786808751 +0700	commit: feat: tambahkan aksi ubah pada transaksi dan cicilan asset
+6cc07e6f1aa03025b3087082bdf25724c9a004ed cb2157ae10a8f111f889431e6be6f427413ed2f2 neangansarang <neangansarangkamarang@gmail.com> 1786809123 +0700	commit: feat: update README
+cb2157ae10a8f111f889431e6be6f427413ed2f2 4687ee6117357b9b2b18aa10ae172d21ae381847 neangansarang <neangansarangkamarang@gmail.com> 1786809385 +0700	commit: feat: first add light and dark mode
+4687ee6117357b9b2b18aa10ae172d21ae381847 162452f6c2823a3d6b1953e8171def03d5934e5d neangansarang <neangansarangkamarang@gmail.com> 1786809785 +0700	commit: fix: tombol saat dark dan light
+162452f6c2823a3d6b1953e8171def03d5934e5d b7a07987b3ddb0124192feb337b815c96e552623 neangansarang <neangansarangkamarang@gmail.com> 1786810951 +0700	commit: feat: add prepare deploy vercel and integrate supabase
+b7a07987b3ddb0124192feb337b815c96e552623 66d94dbaa6140e6540622be2026f4f5997b5b232 neangansarang <neangansarangkamarang@gmail.com> 1786812059 +0700	commit: feat: update annon key public
+66d94dbaa6140e6540622be2026f4f5997b5b232 93db5cf0c39397dcdb9db87802660e7595641505 neangansarang <neangansarangkamarang@gmail.com> 1786812359 +0700	commit: fix: untuk penyesuaian settingan supabase
+93db5cf0c39397dcdb9db87802660e7595641505 8f2d52cb97b21582361f60b2e218d888e086da1b neangansarang <neangansarangkamarang@gmail.com> 1786814740 +0700	commit: feat: perbaikan pendaftaran akun baru
+8f2d52cb97b21582361f60b2e218d888e086da1b f00dc3289b14267981da8ccf58a2ff007a5bd1de neangansarang <neangansarangkamarang@gmail.com> 1786817895 +0700	commit: feat: sesuaikan halaman
+f00dc3289b14267981da8ccf58a2ff007a5bd1de e05611cb004d2415145fe8a656f17622ddedb350 neangansarang <neangansarangkamarang@gmail.com> 1786819207 +0700	commit: feat: tambahkan evidence pada form transaksi
+e05611cb004d2415145fe8a656f17622ddedb350 f9246ef2155c562466c7635bacc1f3723693a613 neangansarang <neangansarangkamarang@gmail.com> 1786819544 +0700	commit: feat: tambahkan aksi hapus evidence gambar pada saat edit
+f9246ef2155c562466c7635bacc1f3723693a613 faaaa20288d663b0adf693a725c6a389ac383ede neangansarang <neangansarangkamarang@gmail.com> 1786819922 +0700	commit: feat: add heartbeat
+faaaa20288d663b0adf693a725c6a389ac383ede 6ac714031c120f37b133d91e5c086e1b445f24ec neangansarang <neangansarangkamarang@gmail.com> 1786820055 +0700	commit: fix: hubby mode
