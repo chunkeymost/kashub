@@ -91,7 +91,7 @@ app.delete('/api/transactions/:id', async (req, res) => {
 app.get('/api/plans', async (req, res) => {
   try {
     const [rows] = await pool.query(
-      'SELECT id, name, target_amount AS targetAmount, mode, target_date AS targetDate, monthly_fixed AS monthlyFixed, purchase_link AS purchaseLink, created_at AS createdAt FROM plans ORDER BY created_at DESC'
+      'SELECT id, name, target_amount AS targetAmount, mode, target_date AS targetDate, monthly_fixed AS monthlyFixed, purchase_link AS purchaseLink, evidence, created_at AS createdAt FROM plans ORDER BY created_at DESC'
     );
     res.json(rows);
   } catch (err) {
@@ -102,10 +102,10 @@ app.get('/api/plans', async (req, res) => {
 
 app.post('/api/plans', async (req, res) => {
   try {
-    const { id, name, targetAmount, mode, targetDate, monthlyFixed, createdAt, purchaseLink } = req.body;
+    const { id, name, targetAmount, mode, targetDate, monthlyFixed, createdAt, purchaseLink, evidence } = req.body;
     await pool.query(
-      'INSERT INTO plans (id, name, target_amount, mode, target_date, monthly_fixed, purchase_link, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
-      [id, name, targetAmount, mode, targetDate || null, monthlyFixed || 0, purchaseLink || null, createdAt]
+      'INSERT INTO plans (id, name, target_amount, mode, target_date, monthly_fixed, purchase_link, evidence, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)',
+      [id, name, targetAmount, mode, targetDate || null, monthlyFixed || 0, purchaseLink || null, evidence || null, createdAt]
     );
     res.json({ success: true });
   } catch (err) {
@@ -126,10 +126,10 @@ app.delete('/api/plans/:id', async (req, res) => {
 
 app.put('/api/plans/:id', async (req, res) => {
   try {
-    const { name, targetAmount, mode, targetDate, monthlyFixed, purchaseLink } = req.body;
+    const { name, targetAmount, mode, targetDate, monthlyFixed, purchaseLink, evidence } = req.body;
     await pool.query(
-      'UPDATE plans SET name=?, target_amount=?, mode=?, target_date=?, monthly_fixed=?, purchase_link=? WHERE id=?',
-      [name, targetAmount, mode, targetDate || null, monthlyFixed || 0, purchaseLink || null, req.params.id]
+      'UPDATE plans SET name=?, target_amount=?, mode=?, target_date=?, monthly_fixed=?, purchase_link=?, evidence=? WHERE id=?',
+      [name, targetAmount, mode, targetDate || null, monthlyFixed || 0, purchaseLink || null, evidence || null, req.params.id]
     );
     res.json({ success: true });
   } catch (err) {

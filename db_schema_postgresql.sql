@@ -15,6 +15,7 @@ CREATE TABLE IF NOT EXISTS plans (
   target_date DATE DEFAULT NULL,
   monthly_fixed INT DEFAULT 0,
   purchase_link VARCHAR(500) DEFAULT NULL,
+  evidence TEXT DEFAULT NULL,
   created_at DATE NOT NULL DEFAULT CURRENT_DATE
 );
 

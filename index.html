@@ -140,6 +140,9 @@
   .plan-link{font-size:12.5px; margin-top:8px;}
   .plan-link a{color:var(--accent); text-decoration:none;}
   .plan-link a:hover{text-decoration:underline;}
+  .plan-evidence{margin-top:10px;}
+  .plan-evidence img{max-width:120px; max-height:120px; border-radius:6px; border:1px solid var(--border); object-fit:cover; cursor:pointer;}
+  .plan-evidence img:hover{opacity:0.8;}
   .contrib-list{margin-top:14px; background:var(--bg); border:1px solid var(--border); border-radius:var(--radius); overflow:hidden;}
   .contrib-list-head{padding:10px 14px; font-size:12px; font-weight:600; color:var(--ink-soft); border-bottom:1px solid var(--border); background:var(--surface);}
   .contrib-item{display:flex; align-items:center; justify-content:space-between; padding:10px 14px; border-bottom:1px solid var(--border); font-size:13px; gap:10px;}
@@ -394,6 +397,11 @@
         <label>Link Pembelian (opsional)</label>
         <input type="url" id="planLink" placeholder="https://...">
       </div>
+      <div class="full">
+        <label>Bukti / Gambar Rencana (opsional)</label>
+        <input type="file" accept="image/*" id="planEvidence" onchange="document.getElementById('planEvidencePreview').innerHTML=this.files[0]?'<img src='+URL.createObjectURL(this.files[0])+'>':''">
+        <div class="contrib-preview" id="planEvidencePreview"></div>
+      </div>
       <div class="full" style="display:flex; gap:8px; flex-wrap:wrap;">
         <button type="submit" class="btn" id="planSubmitBtn">+ Buat Rencana</button>
         <button type="submit" class="btn" id="planUpdateBtn" style="display:none;">Update Rencana</button>
@@ -434,6 +442,7 @@
   let editingId = null;
   let editingPlanId = null;
   let evidenceRemoved = false;
+  let planEvidenceRemoved = false;
   const _now = new Date();
   let filterMonth = _now.getMonth() + 1;
   let filterYear = _now.getFullYear();
@@ -885,9 +894,11 @@
 
   function resetPlanFormMode(){
     editingPlanId = null;
+    planEvidenceRemoved = false;
     document.getElementById('planForm').reset();
     document.getElementById('planDateWrap').style.display='block';
     document.getElementById('planMonthlyWrap').style.display='none';
+    document.getElementById('planEvidencePreview').innerHTML = '';
     document.getElementById('planSubmitBtn').style.display = '';
     document.getElementById('planUpdateBtn').style.display = 'none';
     document.getElementById('planCancelBtn').style.display = 'none';
@@ -900,19 +911,29 @@
   document.getElementById('planForm').addEventListener('submit', async (e)=>{
     e.preventDefault();
     const mode = document.querySelector('input[name="planMode"]:checked').value;
-    const planData = {
-      name: document.getElementById('planName').value.trim(),
-      targetAmount: Number(document.getElementById('planTarget').value) || 0,
-      mode: mode,
-      targetDate: mode==='date' ? document.getElementById('planDate').value : '',
-      monthlyFixed: mode==='monthly' ? Number(document.getElementById('planMonthly').value)||0 : 0,
-      purchaseLink: document.getElementById('planLink').value.trim()
-    };
-    if(!planData.name || planData.targetAmount<=0) return;
-    if(planData.mode==='date' && !planData.targetDate) return;
-    if(planData.mode==='monthly' && planData.monthlyFixed<=0) return;
+    const fileInput = document.getElementById('planEvidence');
+    let evidence = null;
 
     if(editingPlanId){
+      const existing = plans.find(p=>p.id===editingPlanId);
+      evidence = planEvidenceRemoved ? null : (existing ? existing.evidence || null : null);
+      if(fileInput && fileInput.files && fileInput.files[0]){
+        const file = fileInput.files[0];
+        if(file.size > 5*1024*1024){ alert('Ukuran gambar maks 5MB.'); return; }
+        evidence = await compressImage(await fileToBase64(file), 800);
+      }
+      const planData = {
+        name: document.getElementById('planName').value.trim(),
+        targetAmount: Number(document.getElementById('planTarget').value) || 0,
+        mode: mode,
+        targetDate: mode==='date' ? document.getElementById('planDate').value : '',
+        monthlyFixed: mode==='monthly' ? Number(document.getElementById('planMonthly').value)||0 : 0,
+        purchaseLink: document.getElementById('planLink').value.trim(),
+        evidence: evidence
+      };
+      if(!planData.name || planData.targetAmount<=0) return;
+      if(planData.mode==='date' && !planData.targetDate) return;
+      if(planData.mode==='monthly' && planData.monthlyFixed<=0) return;
       try{
         const res = await fetch(API+'/api/plans/'+editingPlanId, {
           method:'PUT', headers:{'Content-Type':'application/json'}, body:JSON.stringify(planData)
@@ -927,6 +948,23 @@
         alert('Gagal mengupdate rencana.');
       }
     } else {
+      if(fileInput && fileInput.files && fileInput.files[0]){
+        const file = fileInput.files[0];
+        if(file.size > 5*1024*1024){ alert('Ukuran gambar maks 5MB.'); return; }
+        evidence = await compressImage(await fileToBase64(file), 800);
+      }
+      const planData = {
+        name: document.getElementById('planName').value.trim(),
+        targetAmount: Number(document.getElementById('planTarget').value) || 0,
+        mode: mode,
+        targetDate: mode==='date' ? document.getElementById('planDate').value : '',
+        monthlyFixed: mode==='monthly' ? Number(document.getElementById('planMonthly').value)||0 : 0,
+        purchaseLink: document.getElementById('planLink').value.trim(),
+        evidence: evidence
+      };
+      if(!planData.name || planData.targetAmount<=0) return;
+      if(planData.mode==='date' && !planData.targetDate) return;
+      if(planData.mode==='monthly' && planData.monthlyFixed<=0) return;
       const plan = { id: Date.now(), ...planData, createdAt: todayISO() };
       try{
         await apiPost('/api/plans', plan);
@@ -934,6 +972,7 @@
         e.target.reset();
         document.getElementById('planDateWrap').style.display='block';
         document.getElementById('planMonthlyWrap').style.display='none';
+        document.getElementById('planEvidencePreview').innerHTML = '';
         renderAll();
         alert('Rencana aset berhasil dibuat!');
       }catch(err){
@@ -988,6 +1027,7 @@
         </div>
         ${!done ? `<div class="plan-note">${cicilanText}</div>` : ''}
         ${p.purchaseLink ? `<div class="plan-link">🔗 <a href="${escapeHtml(p.purchaseLink)}" target="_blank">Lihat Produk</a></div>` : ''}
+        ${p.evidence ? `<div class="plan-evidence"><img class="tx-evidence-thumb" src="${p.evidence}" data-showevidence="${p.id}" title="Lihat bukti"></div>` : ''}
         <div class="plan-actions">
           ${!done ? `<button class="btn small" data-contrib="${p.id}">+ Tambah Setoran</button>` : ''}
           <button class="btn small outline" data-listcontrib="${p.id}">Lihat Setoran</button>
@@ -1032,6 +1072,11 @@
         } else {
           wrap.style.display='none';
         }
+      });
+    });
+    grid.querySelectorAll('[data-showevidence]').forEach(img=>{
+      img.addEventListener('click', ()=>{
+        showEvidenceModal(img.src);
       });
     });
     grid.querySelectorAll('[data-savecontrib]').forEach(btn=>{
@@ -1095,6 +1140,7 @@
         const plan = plans.find(p=>p.id===id);
         if(!plan) return;
         editingPlanId = id;
+        planEvidenceRemoved = false;
         document.getElementById('planName').value = plan.name;
         document.getElementById('planTarget').value = plan.targetAmount;
         document.getElementById('planLink').value = plan.purchaseLink || '';
@@ -1104,6 +1150,18 @@
         document.getElementById('planMonthlyWrap').style.display = mode==='monthly' ? 'block' : 'none';
         if(mode==='date') document.getElementById('planDate').value = plan.targetDate;
         if(mode==='monthly') document.getElementById('planMonthly').value = plan.monthlyFixed;
+        const prev = document.getElementById('planEvidencePreview');
+        if(plan.evidence){
+          prev.innerHTML = `<img src="${plan.evidence}"><button type="button" class="btn small outline" id="planRemoveEvidence" style="margin-left:8px; font-size:11px; padding:4px 10px; color:var(--red);">✕ Hapus</button>`;
+          document.getElementById('planRemoveEvidence').addEventListener('click', ()=>{
+            prev.innerHTML = '';
+            document.getElementById('planEvidence').value = '';
+            planEvidenceRemoved = true;
+          });
+        } else {
+          prev.innerHTML = '';
+        }
+        document.getElementById('planEvidence').value = '';
         document.getElementById('planSubmitBtn').style.display = 'none';
         document.getElementById('planUpdateBtn').style.display = '';
         document.getElementById('planCancelBtn').style.display = '';
