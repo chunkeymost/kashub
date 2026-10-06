@@ -8,7 +8,8 @@
 <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<style>
+  <script type="module" src="config.js"></script>
+  <style>
   :root{
     --bg:#f6f5f2;
     --surface:#ffffff;
@@ -496,23 +497,13 @@
 </main>
 </div>
 
-<script>
-(function(){
+<script type="module">
+import { SUPABASE_URL, SUPABASE_ANON_KEY } from './config.js';
 
-  const SUPABASE_URL = 'https://nyafwgihwhjzbdgoozwa.supabase.co';
-  const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im55YWZ3Z2lod2hqemJkZ29vendhIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODY4MDUwOTIsImV4cCI6MjEwMjM4MTA5Mn0.YJvvCcG5c0hkPvsSLl6-W5WhHIDHxmozD7L0EslWQgA';
-  let _supabase;
-  try {
-    _supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-    console.log('Supabase client initialized successfully');
-  } catch(e) {
-    console.error('Supabase init failed:', e);
-    document.getElementById('authScreen').style.display = '';
-    document.getElementById('authError').textContent = 'Gagal menginisialisasi Supabase. Periksa koneksi internet.';
-    document.getElementById('authError').style.display = '';
-  }
+const _supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+console.log('Supabase client initialized successfully');
 
-  function getPreferredTheme(){
+function getPreferredTheme(){
     const saved = localStorage.getItem('theme');
     if(saved) return saved;
     return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
@@ -1458,7 +1449,6 @@
   }
 
   checkUser();
-})();
 </script>
 </body>
 </html>
