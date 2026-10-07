@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Kas — Masuk / Daftar</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+<link rel="stylesheet" href="styles/styles.css">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+</head>
+<body>
+
+<div id="authScreen" style="display:none;">
+  <header>
+    <div class="nav-wrap">
+      <div class="brand"><span class="dot"></span>Kas</div>
+      <button class="theme-toggle" id="themeToggleAuth" title="Ganti tema"><i class="fas fa-sun"></i></button>
+    </div>
+  </header>
+  <div class="auth-container">
+    <div class="auth-card">
+      <h2 id="authTitle">Masuk</h2>
+      <p class="subtitle" id="authSubtitle">Selamat datang kembali.</p>
+      <div class="auth-error" id="authError"></div>
+      <form id="authForm">
+        <div id="nameField" style="display:none;">
+          <label>Nama</label>
+          <input type="text" id="authName" placeholder="Nama lengkap">
+        </div>
+        <div>
+          <label>Email</label>
+          <input type="email" id="authEmail" placeholder="email@contoh.com" required>
+        </div>
+        <div>
+          <label>Password</label>
+          <input type="password" id="authPassword" placeholder="Minimal 6 karakter" required minlength="6">
+        </div>
+        <button type="submit" class="btn" id="authSubmitBtn">Masuk</button>
+      </form>
+      <p class="toggle-text">
+        <span id="authToggleText">Belum punya akun? </span>
+        <a id="authToggleLink">Daftar</a>
+      </p>
+    </div>
+  </div>
+</div>
+
+<div id="loadingScreen" class="loading-screen" style="display:none;">
+  <i class="fas fa-spinner fa-spin" style="margin-right:8px;"></i> Memuat data...
+</div>
+
+<div id="appScreen" style="display:none;">
+  <p style="padding:2rem; text-align:center;">Mengalihkan ke dasbor...</p>
+</div>
+
+<script type="module">
+import { supabase } from './supabase.js';
+import { checkUser, showAuth, showLoading, initAuth } from './js/auth.js';
+
+checkUser(
+  (user) => { window.location.href = 'index.html'; },
+  () => { showAuth(); }
+);
+
+initAuth((user) => {
+  window.location.href = 'index.html';
+});
+</script>
+</body>
+</html>
